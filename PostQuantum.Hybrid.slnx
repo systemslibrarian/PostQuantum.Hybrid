@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PostQuantum.Hybrid.Tests/PostQuantum.Hybrid.Tests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/BasicDemo/BasicDemo.csproj" />
+    <Project Path="samples/KemEncryption/KemEncryption.csproj" />
+    <Project Path="samples/SignedDocument/SignedDocument.csproj" />
+    <Project Path="samples/KeyPersistence/KeyPersistence.csproj" />
+    <Project Path="samples/SecureMessenger/SecureMessenger.csproj" />
+  </Folder>
+</Solution>

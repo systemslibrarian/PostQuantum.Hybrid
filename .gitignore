@@ -1,0 +1,35 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# Test results
+TestResults/
+coverage*.xml
+*.trx
+*.coverage
+*.coveragexml
+
+# Build artifacts
+artifacts/
+
+# OS
+.DS_Store
+Thumbs.db
