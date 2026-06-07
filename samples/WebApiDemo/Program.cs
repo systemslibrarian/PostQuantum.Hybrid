@@ -25,29 +25,26 @@ using PostQuantum.Hybrid.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // One-time bootstrap key generation — in production these come from a KMS / file.
-HybridKemKeyPair bootstrapKem;
-HybridSignatureKeyPair bootstrapSig;
-try
+// Compute the PEM payloads up front so we can dispose the bootstrap pairs
+// immediately. The options lambda below runs lazily on first DI resolve, so
+// it must NOT capture the disposable key-pair instances directly.
+string kemPubPem, kemPrivPem, sigPubPem, sigPrivPem;
+using (var bootstrapKem = HybridKem.GenerateKeyPair())
+using (var bootstrapSig = HybridSignature.GenerateKeyPair())
 {
-    bootstrapKem = HybridKem.GenerateKeyPair();
-    bootstrapSig = HybridSignature.GenerateKeyPair();
-}
-catch
-{
-    throw;
+    kemPubPem  = bootstrapKem.PublicKey.ExportPem();
+    kemPrivPem = bootstrapKem.PrivateKey.ExportPem();
+    sigPubPem  = bootstrapSig.PublicKey.ExportPem();
+    sigPrivPem = bootstrapSig.PrivateKey.ExportPem();
 }
 
 builder.Services.AddPostQuantumHybrid(options =>
 {
-    options.KemPublicKeyPem        = bootstrapKem.PublicKey.ExportPem();
-    options.KemPrivateKeyPem       = bootstrapKem.PrivateKey.ExportPem();
-    options.SignaturePublicKeyPem  = bootstrapSig.PublicKey.ExportPem();
-    options.SignaturePrivateKeyPem = bootstrapSig.PrivateKey.ExportPem();
+    options.KemPublicKeyPem        = kemPubPem;
+    options.KemPrivateKeyPem       = kemPrivPem;
+    options.SignaturePublicKeyPem  = sigPubPem;
+    options.SignaturePrivateKeyPem = sigPrivPem;
 });
-// The DI providers now own copies of the key material; we can dispose the
-// bootstrap pairs to clear our local references.
-bootstrapKem.Dispose();
-bootstrapSig.Dispose();
 
 var app = builder.Build();
 

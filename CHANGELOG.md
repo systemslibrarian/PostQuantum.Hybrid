@@ -23,6 +23,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   `PostQuantumHybridException` (introduced in the Tier 4 typed exception
   taxonomy). The fuzz suite had been red on every CI run since that
   taxonomy shipped.
+- `samples/WebApiDemo` no longer disposes the bootstrap hybrid key pairs
+  before the DI options lambda runs. The lambda is invoked lazily on
+  first request, so disposing the source pairs at startup caused
+  `ObjectDisposedException` on every `/pub/*` and `/seal`/`/sign` call.
+  The sample now reads each PEM eagerly inside a `using` block, then
+  hands the strings to the options lambda.
+
+### Added — tooling
+- `tools/run-all-samples.ps1` exercises every sample (BasicDemo,
+  KemEncryption, SignedDocument, KeyPersistence, SecureMessenger,
+  LargeFileEncryption, WebApiDemo) on every target framework and
+  asserts each one's happy path and tamper-detection step both work.
+  LargeFileEncryption drives `gen -> seal -> open` and SHA-256-diffs
+  the recovered file. WebApiDemo is started in the background and
+  exercised via GET and POST. Returns non-zero on any failure with a
+  per-sample summary.
 
 ### Added — analyzer code-fixes
 - Code-fix providers for **PQH002**

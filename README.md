@@ -62,10 +62,14 @@ without becoming cryptography experts.
 
 ```bash
 dotnet add package PostQuantum.Hybrid
-dotnet add package PostQuantum.Hybrid.Analyzers      # optional but recommended
+dotnet add package PostQuantum.Hybrid.Analyzers      # strongly recommended — catches misuse at build time
 dotnet add package PostQuantum.Hybrid.Envelopes      # if you want one-call seal/open
 dotnet add package PostQuantum.Hybrid.AspNetCore     # if you're in ASP.NET Core
 ```
+
+> **Install the analyzers.** `PostQuantum.Hybrid.Analyzers` is technically
+> optional but turns five of the most-common cryptographic foot-guns into
+> build-time errors. Skipping it is a hostile choice for your future self.
 
 Or start a new project from a template:
 
@@ -188,8 +192,13 @@ verify. See [ADR 0004](docs/adr/0004-signature-concat.md).
 - **Implicit rejection:** ML-KEM uses FIPS 203's implicit rejection — malformed
   ciphertexts yield pseudorandom secrets rather than throwing.
 - **Sensitive material:** every private-key type implements `IDisposable` and
-  zeros its buffers on dispose. The `PQH001` analyzer in
-  `PostQuantum.Hybrid.Analyzers` flags any local that misses `using`.
+  zeros its buffers on dispose.
+- **Build-time misuse checks:** `PostQuantum.Hybrid.Analyzers` ships five
+  rules with code-fixes — **PQH001** (undisposed sensitive types),
+  **PQH002** (raw `SharedSecret` used as a symmetric key without HKDF),
+  **PQH003** (decapsulate before verify), **PQH004** (ignored
+  `HybridSignature.Verify` result), and **PQH005** (AEAD without
+  KEM-ciphertext binding as `associatedData`).
 - **Signature randomization:** ML-DSA signing is randomized by default — two
   signatures over the same data will differ. This is expected.
 
