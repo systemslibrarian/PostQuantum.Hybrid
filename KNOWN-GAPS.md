@@ -83,19 +83,30 @@ mitigations.
 
 ## Feature gaps
 
-### No PKCS#8 / SPKI key encoding
+### PKCS#8 / SPKI framing ships with placeholder OIDs (preview)
 
-**State:** Hybrid keys serialize to a library-specific concatenated wire
-format (with PEM wrapping). They do not currently produce PKCS#8 /
-SubjectPublicKeyInfo blobs.
+**State:** `HybridKemPublicKey.ExportSubjectPublicKeyInfo()` /
+`ImportSubjectPublicKeyInfo`, `HybridKemPrivateKey.ExportPkcs8PrivateKey()`
+/ `ImportPkcs8PrivateKey`, and the analogous four methods on the
+signature key types all ship in v1.x. The DER encoding follows X.509
+SPKI and PKCS#8 v1 verbatim; the inner key bytes are the existing
+PostQuantum.Hybrid wire format including the algorithm-id byte. See
+[ADR 0014](docs/adr/0014-spki-pkcs8-preview.md).
 
-**Impact:** PostQuantum.Hybrid blobs can't be loaded into
-`X509Certificate2`, OpenSSL CLI tooling, or other libraries that expect
-SPKI/PKCS#8.
+**Impact (residual):** The algorithm OIDs are placeholders under the
+IANA Example PEN `1.3.6.1.4.1.32473` (RFC 5612). The IETF LAMPS WG's
+composite-KEM / composite-signature drafts have not finalized their
+OIDs yet; when they do, the codec will accept both the placeholder
+OIDs (for backward compatibility with early adopters) and the
+IETF-allocated values. Cross-implementation interop today is
+limited to other PostQuantum.Hybrid consumers — third-party tools
+that key OID lookups against the IETF registries will not recognise
+our preview OIDs.
 
-**Plan:** Add when IETF composite-key OIDs stabilize (drafts exist;
-final OIDs pending). Tracking the
-[IETF LAMPS WG](https://datatracker.ietf.org/wg/lamps/) work.
+**Plan:** Watch
+[IETF LAMPS WG](https://datatracker.ietf.org/wg/lamps/). When the
+drafts allocate final OIDs, add them as additional accepted values
+in `Internal.Pkcs8SpkiCodec` and document the migration in CHANGELOG.
 
 ### No streaming sign/verify or streaming encapsulation
 

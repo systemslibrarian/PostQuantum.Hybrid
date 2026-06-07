@@ -131,6 +131,58 @@ public sealed class HybridKemPrivateKey : IDisposable
         { key = null; return false; }
     }
 
+    /// <summary>
+    /// Encodes this key as a PKCS#8 <c>PrivateKeyInfo</c> DER structure.
+    /// **Preview**: the algorithm OID is a placeholder taken from
+    /// RFC 5612's IANA Example PEN and will be replaced when the IETF
+    /// LAMPS composite-KEM draft assigns final OIDs. See
+    /// <see href="../docs/adr/0014-spki-pkcs8-preview.md">ADR 0014</see>.
+    /// The returned buffer holds sensitive material — zero it after use.
+    /// </summary>
+    public byte[] ExportPkcs8PrivateKey()
+    {
+        ThrowIfDisposed();
+        var oid = Algorithm switch
+        {
+            HybridKemAlgorithm.X25519MlKem768      => Pkcs8SpkiCodec.OidHybridKemHkdf,
+            HybridKemAlgorithm.X25519MlKem768XWing => Pkcs8SpkiCodec.OidHybridKemXWing,
+            _ => throw new PostQuantumHybridException(HybridFailureReason.UnsupportedAlgorithmId, $"Unsupported hybrid KEM algorithm: {Algorithm}"),
+        };
+        var raw = Export();
+        try
+        {
+            return Pkcs8SpkiCodec.EncodePkcs8(oid, raw);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(raw);
+        }
+    }
+
+    /// <summary>
+    /// Decodes a PKCS#8 PrivateKeyInfo (DER) produced by
+    /// <see cref="ExportPkcs8PrivateKey"/>. The caller owns the returned
+    /// instance and must dispose it. **Preview** — placeholder OIDs.
+    /// </summary>
+    public static HybridKemPrivateKey ImportPkcs8PrivateKey(ReadOnlySpan<byte> pkcs8Der)
+    {
+        var (oid, keyBytes) = Pkcs8SpkiCodec.DecodePkcs8(pkcs8Der);
+        try
+        {
+            if (oid != Pkcs8SpkiCodec.OidHybridKemHkdf && oid != Pkcs8SpkiCodec.OidHybridKemXWing)
+            {
+                throw new HybridKeyParseException(
+                    HybridFailureReason.UnsupportedAlgorithmId,
+                    $"PrivateKeyInfo OID {oid} is not a recognised PostQuantum.Hybrid hybrid-KEM OID.");
+            }
+            return Import(keyBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(keyBytes);
+        }
+    }
+
     /// <summary>Clears the sensitive key material held by this instance.</summary>
     public void Dispose()
     {

@@ -87,4 +87,28 @@ public sealed class HybridSignaturePublicKey
         catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException or ArgumentNullException)
         { key = null; return false; }
     }
+
+    /// <summary>
+    /// Encodes this key as a standard X.509 <c>SubjectPublicKeyInfo</c>
+    /// DER structure. **Preview**: the algorithm OID is a placeholder.
+    /// See <see href="../docs/adr/0014-spki-pkcs8-preview.md">ADR 0014</see>.
+    /// </summary>
+    public byte[] ExportSubjectPublicKeyInfo()
+        => Pkcs8SpkiCodec.EncodeSpki(Pkcs8SpkiCodec.OidHybridSig, Export());
+
+    /// <summary>
+    /// Decodes a SubjectPublicKeyInfo (DER) produced by
+    /// <see cref="ExportSubjectPublicKeyInfo"/>. **Preview** — placeholder OIDs.
+    /// </summary>
+    public static HybridSignaturePublicKey ImportSubjectPublicKeyInfo(ReadOnlySpan<byte> spkiDer)
+    {
+        var (oid, keyBytes) = Pkcs8SpkiCodec.DecodeSpki(spkiDer);
+        if (oid != Pkcs8SpkiCodec.OidHybridSig)
+        {
+            throw new HybridKeyParseException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"SubjectPublicKeyInfo OID {oid} is not the recognised PostQuantum.Hybrid hybrid-signature OID.");
+        }
+        return Import(keyBytes);
+    }
 }

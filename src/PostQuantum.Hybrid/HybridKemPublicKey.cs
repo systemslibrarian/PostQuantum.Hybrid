@@ -98,4 +98,38 @@ public sealed class HybridKemPublicKey
         catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException or ArgumentNullException)
         { key = null; return false; }
     }
+
+    /// <summary>
+    /// Encodes this key as a standard X.509 <c>SubjectPublicKeyInfo</c>
+    /// DER structure. **Preview**: the algorithm OID is a placeholder
+    /// taken from RFC 5612's IANA Example PEN and will be replaced when
+    /// the IETF LAMPS composite-KEM draft assigns final OIDs. See
+    /// <see href="../docs/adr/0014-spki-pkcs8-preview.md">ADR 0014</see>.
+    /// </summary>
+    public byte[] ExportSubjectPublicKeyInfo()
+    {
+        var oid = Algorithm switch
+        {
+            HybridKemAlgorithm.X25519MlKem768      => Pkcs8SpkiCodec.OidHybridKemHkdf,
+            HybridKemAlgorithm.X25519MlKem768XWing => Pkcs8SpkiCodec.OidHybridKemXWing,
+            _ => throw new PostQuantumHybridException(HybridFailureReason.UnsupportedAlgorithmId, $"Unsupported hybrid KEM algorithm: {Algorithm}"),
+        };
+        return Pkcs8SpkiCodec.EncodeSpki(oid, Export());
+    }
+
+    /// <summary>
+    /// Decodes a SubjectPublicKeyInfo (DER) produced by
+    /// <see cref="ExportSubjectPublicKeyInfo"/>. **Preview** — placeholder OIDs.
+    /// </summary>
+    public static HybridKemPublicKey ImportSubjectPublicKeyInfo(ReadOnlySpan<byte> spkiDer)
+    {
+        var (oid, keyBytes) = Pkcs8SpkiCodec.DecodeSpki(spkiDer);
+        if (oid != Pkcs8SpkiCodec.OidHybridKemHkdf && oid != Pkcs8SpkiCodec.OidHybridKemXWing)
+        {
+            throw new HybridKeyParseException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"SubjectPublicKeyInfo OID {oid} is not a recognised PostQuantum.Hybrid hybrid-KEM OID.");
+        }
+        return Import(keyBytes);
+    }
 }

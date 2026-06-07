@@ -128,6 +128,50 @@ public sealed class HybridSignaturePrivateKey : IDisposable
         { key = null; return false; }
     }
 
+    /// <summary>
+    /// Encodes this key as a PKCS#8 <c>PrivateKeyInfo</c> DER structure.
+    /// **Preview**: the algorithm OID is a placeholder. See
+    /// <see href="../docs/adr/0014-spki-pkcs8-preview.md">ADR 0014</see>.
+    /// The returned buffer holds sensitive material — zero it after use.
+    /// </summary>
+    public byte[] ExportPkcs8PrivateKey()
+    {
+        ThrowIfDisposed();
+        var raw = Export();
+        try
+        {
+            return Pkcs8SpkiCodec.EncodePkcs8(Pkcs8SpkiCodec.OidHybridSig, raw);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(raw);
+        }
+    }
+
+    /// <summary>
+    /// Decodes a PKCS#8 PrivateKeyInfo (DER) produced by
+    /// <see cref="ExportPkcs8PrivateKey"/>. The caller owns the returned
+    /// instance and must dispose it. **Preview** — placeholder OIDs.
+    /// </summary>
+    public static HybridSignaturePrivateKey ImportPkcs8PrivateKey(ReadOnlySpan<byte> pkcs8Der)
+    {
+        var (oid, keyBytes) = Pkcs8SpkiCodec.DecodePkcs8(pkcs8Der);
+        try
+        {
+            if (oid != Pkcs8SpkiCodec.OidHybridSig)
+            {
+                throw new HybridKeyParseException(
+                    HybridFailureReason.UnsupportedAlgorithmId,
+                    $"PrivateKeyInfo OID {oid} is not the recognised PostQuantum.Hybrid hybrid-signature OID.");
+            }
+            return Import(keyBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(keyBytes);
+        }
+    }
+
     /// <summary>Clears the sensitive key material held by this instance.</summary>
     public void Dispose()
     {

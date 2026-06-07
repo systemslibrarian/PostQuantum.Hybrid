@@ -27,3 +27,11 @@ static PostQuantum.Hybrid.HybridSignaturePrivateKey.TryImport(System.ReadOnlySpa
 static PostQuantum.Hybrid.HybridSignaturePrivateKey.TryImportPem(string! pem, out PostQuantum.Hybrid.HybridSignaturePrivateKey? key) -> bool
 static PostQuantum.Hybrid.HybridSignaturePublicKey.TryImport(System.ReadOnlySpan<byte> source, out PostQuantum.Hybrid.HybridSignaturePublicKey? key) -> bool
 static PostQuantum.Hybrid.HybridSignaturePublicKey.TryImportPem(string! pem, out PostQuantum.Hybrid.HybridSignaturePublicKey? key) -> bool
+PostQuantum.Hybrid.HybridKemPrivateKey.ExportPkcs8PrivateKey() -> byte[]!
+PostQuantum.Hybrid.HybridKemPublicKey.ExportSubjectPublicKeyInfo() -> byte[]!
+PostQuantum.Hybrid.HybridSignaturePrivateKey.ExportPkcs8PrivateKey() -> byte[]!
+PostQuantum.Hybrid.HybridSignaturePublicKey.ExportSubjectPublicKeyInfo() -> byte[]!
+static PostQuantum.Hybrid.HybridKemPrivateKey.ImportPkcs8PrivateKey(System.ReadOnlySpan<byte> pkcs8Der) -> PostQuantum.Hybrid.HybridKemPrivateKey!
+static PostQuantum.Hybrid.HybridKemPublicKey.ImportSubjectPublicKeyInfo(System.ReadOnlySpan<byte> spkiDer) -> PostQuantum.Hybrid.HybridKemPublicKey!
+static PostQuantum.Hybrid.HybridSignaturePrivateKey.ImportPkcs8PrivateKey(System.ReadOnlySpan<byte> pkcs8Der) -> PostQuantum.Hybrid.HybridSignaturePrivateKey!
+static PostQuantum.Hybrid.HybridSignaturePublicKey.ImportSubjectPublicKeyInfo(System.ReadOnlySpan<byte> spkiDer) -> PostQuantum.Hybrid.HybridSignaturePublicKey!
