@@ -22,29 +22,37 @@ publicly.
 **Plan:** Switch to native implementations on whatever .NET version first
 exposes them. The public API does not need to change.
 
-### Embedded regression vectors ship; published NIST .rsp vectors do not
+### Embedded regression vectors + NIST .rsp runner ship; vector fetch is operational
 
-**State:** `NistKatTests` ships three seed-based regression vectors per
-algorithm (ML-KEM-768 and ML-DSA-65). Each vector pins the SHA-256 of
-both the derived public key and the derived private key. On `net10.0`
-the same seeds are additionally fed through the native
-`System.Security.Cryptography.MLKem` / `MLDsa` paths (when the OS
-exposes them) and the resulting public keys are asserted bit-equal
-between backends. The shipped vectors are derived from BouncyCastle's
-deterministic `FromSeed` — they are NOT the published NIST .rsp KAT
-files, which remain workflow-fetched only when `vars.NIST_KAT_MIRROR`
-is configured (see `.github/workflows/nist-kats.yml`).
+**State:** Two layers of FIPS-203/204 validation now ship:
 
-**Impact:** A hypothetical situation where BOTH the BCL ML-KEM/ML-DSA
-implementation AND BouncyCastle's deviate from FIPS-203/204 in the
-*same way* would still not be caught — the cross-check defends against
-inter-backend divergence, not against a shared deviation from the
-standard.
+1. `NistKatTests` ships three in-repo seed-based regression vectors per
+   algorithm. Each vector pins the SHA-256 of both the derived public
+   key and the derived private key. On `net10.0` the same seeds are
+   fed through the native `System.Security.Cryptography.MLKem` /
+   `MLDsa` paths (when the OS exposes them) and the resulting public
+   keys are asserted bit-equal between backends.
 
-**Plan:** Add a runner that parses NIST's `.rsp` format and validates
-both backends against the published vectors when the mirror env var is
-set. Until then, the in-repo regression vectors catch drift within a
-single backend and divergence between backends.
+2. `NistKatRunner` parses NIST's published `.rsp` KAT format and
+   validates that BouncyCastle (and, where available, the native
+   .NET 10 backend) derives the published bytes from each vector's
+   seed. The runner is gated on the `PQH_NIST_KAT_DIR` environment
+   variable: when unset (the default — most local runs and the
+   regular CI matrix), every test in the runner returns early. The
+   weekly `nist-kats.yml` workflow downloads the files from
+   `vars.NIST_KAT_MIRROR` when configured and runs the runner against
+   them.
+
+**Impact (residual):** Only the *operational* gap remains. The runner
+itself is in place; for it to actually compare against the real NIST
+published vectors, a maintainer needs to set `vars.NIST_KAT_MIRROR`
+on the repo (a URL serving `ML-KEM-768.zip` / `ML-DSA-65.zip`
+containing the NIST `.rsp` files). Without that, the runner skips
+cleanly and validation falls back to the in-repo regression vectors.
+
+**Plan:** Stand up the mirror (or fold the .rsp files into the repo
+as test fixtures if their license permits) so the published-vector
+check runs unconditionally on the weekly schedule.
 
 ### No formal proof of the combiner
 
