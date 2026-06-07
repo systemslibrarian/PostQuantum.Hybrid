@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/ci.yml/badge.svg)](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/codeql.yml/badge.svg)](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/systemslibrarian/PostQuantum.Hybrid/branch/main/graph/badge.svg)](https://codecov.io/gh/systemslibrarian/PostQuantum.Hybrid)
 [![NuGet](https://img.shields.io/nuget/v/PostQuantum.Hybrid.svg)](https://www.nuget.org/packages/PostQuantum.Hybrid/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -162,6 +163,43 @@ var pubFromPem = HybridSignaturePublicKey.ImportPem(pubPem);
 
 For the full normative wire-format spec, see [`docs/SPEC.md`](docs/SPEC.md).
 
+## Performance
+
+Pinned baselines from a BenchmarkDotNet run on Windows 11 + Intel
+Core Ultra 7 256V @ 2.20 GHz (see [`benchmarks/`](benchmarks)). The
+weekly [`Benchmarks` workflow](.github/workflows/benchmark.yml)
+re-runs these on every push to track regressions; the
+[`tools/compare-benchmarks.ps1`](tools/compare-benchmarks.ps1) script
+gates PRs at +25% over baseline.
+
+**`.NET 10` (native `MLKem` / `MLDsa`):**
+
+| Operation | Mean | Allocated |
+|---|---:|---:|
+| `HybridKem.GenerateKeyPair` | 277 µs | 6.3 KB |
+| `HybridKem.Encapsulate` | 503 µs | 6.2 KB |
+| `HybridKem.Decapsulate` | 322 µs | 3.1 KB |
+| `HybridSignature.GenerateKeyPair` | 1.80 ms | 9.5 KB |
+| `HybridSignature.Sign` (64 B msg) | 1.63 ms | 11.4 KB |
+| `HybridSignature.Sign` (64 KB msg) | 3.23 ms | 139 KB |
+| `HybridSignature.Verify` (64 B msg) | 583 µs | 7.1 KB |
+| `HybridSignature.Verify` (64 KB msg) | 1.56 ms | 135 KB |
+
+**`.NET 8` (BouncyCastle backend):**
+
+| Operation | Mean | Allocated |
+|---|---:|---:|
+| `HybridKem.GenerateKeyPair` | 591 µs | 29 KB |
+| `HybridKem.Encapsulate` | 978 µs | 36 KB |
+| `HybridKem.Decapsulate` | 861 µs | 40 KB |
+| `HybridSignature.Sign` (64 B msg) | 4.17 ms | 640 KB |
+| `HybridSignature.Verify` (64 B msg) | 1.14 ms | 189 KB |
+
+The native `net10.0` backend is roughly 2–3× faster and 10–60×
+less allocation-heavy than the `net8.0` BouncyCastle fallback,
+depending on the operation. Both wire-compatibly produce the same
+1217 / 2433 / 1121 / 1985 / 4065 / 3374 byte artifacts.
+
 ## How it works
 
 ### Hybrid KEM combiner
@@ -246,7 +284,7 @@ benchmarks/PostQuantum.Hybrid.Benchmarks/     BenchmarkDotNet suite
 samples/                                      7 focused demos (incl. LargeFileEncryption)
 templates/                                    3 dotnet new templates
 docs/                                         spec, design, ADRs, threat model, perf
-scripts/                                      consumer tools (like the downstream hardening audit script)
+scripts/                                      consumer preflight tools (see scripts/README.md)
 tools/                                        repo maintenance scripts
 .github/                                      CI, CodeQL, release, SBOM, mutation, bench
 ```

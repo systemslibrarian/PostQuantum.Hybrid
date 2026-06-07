@@ -39,6 +39,28 @@ jobs:
       - name: Test
         run: dotnet test PostQuantum.Hybrid.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --collect "XPlat Code Coverage" --results-directory ./TestResults
 
+      - name: Install reportgenerator
+        if: matrix.os == 'ubuntu-latest'
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Merge coverage reports
+        if: matrix.os == 'ubuntu-latest'
+        run: reportgenerator -reports:'./TestResults/**/coverage.cobertura.xml' -targetdir:./CoverageReport -reporttypes:'JsonSummary;Cobertura;TextSummary'
+
+      - name: Coverage gate (line-rate >= 75%)
+        if: matrix.os == 'ubuntu-latest'
+        shell: pwsh
+        run: |
+          $summary = Get-Content ./CoverageReport/Summary.json -Raw | ConvertFrom-Json
+          $rate = [math]::Round([double]$summary.summary.linecoverage, 2)
+          Write-Host "Merged line coverage: $rate%"
+          $threshold = 75
+          if ($rate -lt $threshold) {
+            Write-Host "::error::line coverage $rate% is below the $threshold% threshold."
+            exit 1
+          }
+          Write-Host "::notice::line coverage $rate% meets the $threshold% threshold."
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7

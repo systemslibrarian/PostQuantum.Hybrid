@@ -1,0 +1,25 @@
+<Project>
+
+  <!--
+    Centralized test-project policy. Pulls coverlet.collector into every
+    test project so `dotnet test` with XPlat Code Coverage produces a
+    Cobertura report per (project, TFM). The CI workflow then merges
+    them with ReportGenerator and gates on the combined line rate.
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="10.0.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

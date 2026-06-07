@@ -25,4 +25,14 @@
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <!--
+    System.Text is not in the default ImplicitUsings set for
+    Microsoft.NET.Sdk. Add it globally so samples don't have to
+    spell "using System.Text;" for the Encoding utilities they
+    use to build plaintext bytes.
+  -->
+  <ItemGroup>
+    <Using Include="System.Text" />
+  </ItemGroup>
+
 </Project>
