@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj" />
+    <Project Path="src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PostQuantum.Hybrid.Tests/PostQuantum.Hybrid.Tests.csproj" />
+    <Project Path="tests/PostQuantum.Hybrid.Analyzers.Tests/PostQuantum.Hybrid.Analyzers.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/BasicDemo/BasicDemo.csproj" />
@@ -14,5 +16,8 @@
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/PostQuantum.Hybrid.Benchmarks/PostQuantum.Hybrid.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/fuzz/">
+    <Project Path="fuzz/PostQuantum.Hybrid.Fuzz/PostQuantum.Hybrid.Fuzz.csproj" />
   </Folder>
 </Solution>

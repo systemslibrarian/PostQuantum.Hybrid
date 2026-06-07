@@ -1,0 +1,6 @@
+# RFC 9116 security.txt
+Contact: mailto:systemslibrarian@gmail.com
+Contact: https://github.com/systemslibrarian/PostQuantum.Hybrid/security/advisories/new
+Policy: https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/SECURITY.md
+Preferred-Languages: en
+Canonical: https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/.well-known/security.txt

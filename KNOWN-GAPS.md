@@ -19,17 +19,24 @@ publicly.
 **Plan:** Switch to native implementations on whatever .NET version first
 exposes them. The public API does not need to change.
 
-### No KAT (Known Answer Test) vectors
+### No NIST KAT (Known Answer Test) vectors
 
-**State:** The test suite does not include FIPS-203/204 KAT vectors. We rely
-on the upstream implementations (`System.Security.Cryptography.MLKem` /
-BouncyCastle's `MLKem*`) to have been validated against KATs themselves.
+**State:** The test suite does not include the NIST FIPS-203/204 KAT
+files (they are multi-megabyte and out of scope to embed in v1). The
+library implicitly cross-validates BouncyCastle vs. native by running
+the same xUnit test suite on both `net8.0` (BC backend) and `net10.0`
+(native backend) — wire-format drift between backends would surface as
+test failures. We also relied on direct cross-backend interop probes
+during development (both halves on the same TFM, four-direction
+sign/verify and encap/decap), which all passed.
 
-**Impact:** A hypothetical compromise of *both* the BCL ML-KEM/ML-DSA
-implementation and BouncyCastle's would not be caught by our tests.
+**Impact:** A hypothetical situation where BOTH the BCL ML-KEM/ML-DSA
+implementation AND BouncyCastle's deviate from FIPS-203/204 in the
+*same way* would not be caught by our tests.
 
-**Plan:** Add KAT vector tests for ML-KEM-768 and ML-DSA-65 directly so
-each backend is independently validated. (v1.1.)
+**Plan:** Embed a small set of NIST KAT vectors directly so each
+backend is independently validated against the published standard.
+(v1.1.)
 
 ### No formal proof of the combiner
 

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Paul Clark",
+  "classifications": [ "Common", "Console", "Cryptography", "Post-Quantum" ],
+  "name": "PostQuantum.Hybrid console app",
+  "description": "A minimal .NET console app pre-wired with PostQuantum.Hybrid for both hybrid KEM and hybrid signatures.",
+  "identity": "PostQuantum.Hybrid.Templates.PqHybridApp",
+  "shortName": "pqhybrid-app",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "PqHybridAppTemplate",
+  "preferNameDirectory": true,
+  "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "description": "The target framework for the project.",
+      "datatype": "choice",
+      "choices": [
+        { "choice": "net10.0", "description": "Target net10.0 (native ML-KEM and ML-DSA)" },
+        { "choice": "net8.0",  "description": "Target net8.0 (BouncyCastle backend for ML-KEM and ML-DSA)" }
+      ],
+      "defaultValue": "net10.0",
+      "replaces": "PqHybridAppTemplateFramework"
+    },
+    "PackageVersion": {
+      "type": "parameter",
+      "description": "The version of PostQuantum.Hybrid to depend on.",
+      "datatype": "string",
+      "defaultValue": "1.0.0",
+      "replaces": "PqHybridAppTemplatePackageVersion"
+    }
+  }
+}
