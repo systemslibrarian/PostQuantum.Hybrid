@@ -1,0 +1,50 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * 0"   # Sundays 07:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    name: bench-${{ matrix.tfm }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tfm: [ net8.0, net10.0 ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore + build benchmarks (Release)
+        run: |
+          dotnet restore benchmarks/PostQuantum.Hybrid.Benchmarks/PostQuantum.Hybrid.Benchmarks.csproj
+          dotnet build benchmarks/PostQuantum.Hybrid.Benchmarks/PostQuantum.Hybrid.Benchmarks.csproj --configuration Release --no-restore
+
+      - name: Run KEM benchmarks
+        working-directory: benchmarks/PostQuantum.Hybrid.Benchmarks
+        run: dotnet run --framework ${{ matrix.tfm }} --configuration Release --no-build -- --filter "*HybridKemBenchmarks*" --warmupCount 2 --iterationCount 3 --invocationCount 16 --exporters JSON
+
+      - name: Run signature benchmarks
+        working-directory: benchmarks/PostQuantum.Hybrid.Benchmarks
+        run: dotnet run --framework ${{ matrix.tfm }} --configuration Release --no-build -- --filter "*HybridSignatureBenchmarks*" --warmupCount 2 --iterationCount 3 --invocationCount 16 --exporters JSON
+
+      - name: Run serialization benchmarks
+        working-directory: benchmarks/PostQuantum.Hybrid.Benchmarks
+        run: dotnet run --framework ${{ matrix.tfm }} --configuration Release --no-build -- --filter "*SerializationBenchmarks*" --warmupCount 2 --iterationCount 3 --invocationCount 64 --exporters JSON
+
+      - name: Upload benchmark JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ matrix.tfm }}-${{ runner.os }}
+          path: benchmarks/PostQuantum.Hybrid.Benchmarks/BenchmarkDotNet.Artifacts/results/*.json
+          retention-days: 90

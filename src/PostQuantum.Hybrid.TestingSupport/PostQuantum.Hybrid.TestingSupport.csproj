@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>PostQuantum.Hybrid.TestingSupport</RootNamespace>
+    <AssemblyName>PostQuantum.Hybrid.TestingSupport</AssemblyName>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition=" '$(GITHUB_ACTIONS)' == 'true' ">true</ContinuousIntegrationBuild>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>PostQuantum.Hybrid.TestingSupport</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Paul Clark</Authors>
+    <Description>Test helpers for projects that consume PostQuantum.Hybrid. Cached deterministic test keys (HybridTestKeys), fake KemKeyProvider / SignatureKeyProvider, and tamper-injection helpers for negative-path tests.</Description>
+    <PackageTags>testing;cryptography;post-quantum;pqc;hybrid;PostQuantum.Hybrid;test-helpers</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.Hybrid</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.Hybrid</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PostQuantum.Hybrid\PostQuantum.Hybrid.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

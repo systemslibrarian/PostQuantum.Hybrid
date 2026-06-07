@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>PostQuantum.Hybrid.Benchmarks.HybridKemBenchmarks-20260606-205320</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8457/25H2/2025Update/HudsonValley2)
+Intel Core Ultra 7 256V 2.20GHz, 1 CPU, 8 logical and 8 physical cores
+.NET SDK 10.0.300
+  [Host]     : .NET 8.0.27 (8.0.27, 8.0.2726.22922), X64 RyuJIT x86-64-v3
+  Job-VBCXOY : .NET 8.0.27 (8.0.27, 8.0.2726.22922), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>InvocationCount=16  IterationCount=3  WarmupCount=2  
+</code></pre>
+
+<table>
+<thead><tr><th>Method   </th><th>Mean</th><th>Error</th><th>StdDev</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>GenerateKeyPair</td><td>590.5 &mu;s</td><td>274.7 &mu;s</td><td>15.05 &mu;s</td><td>29.24 KB</td>
+</tr><tr><td>Encapsulate</td><td>977.6 &mu;s</td><td>505.0 &mu;s</td><td>27.68 &mu;s</td><td>35.69 KB</td>
+</tr><tr><td>Decapsulate</td><td>861.3 &mu;s</td><td>751.6 &mu;s</td><td>41.20 &mu;s</td><td>39.92 KB</td>
+</tr></tbody></table>
+</body>
+</html>

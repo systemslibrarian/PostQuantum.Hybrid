@@ -37,7 +37,7 @@ jobs:
         run: dotnet build PostQuantum.Hybrid.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test PostQuantum.Hybrid.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
+        run: dotnet test PostQuantum.Hybrid.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --collect "XPlat Code Coverage" --results-directory ./TestResults
 
       - name: Upload test results
         if: always()
@@ -45,6 +45,14 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}
           path: TestResults/
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./TestResults
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   vulnerable-packages:
     name: vulnerable-packages

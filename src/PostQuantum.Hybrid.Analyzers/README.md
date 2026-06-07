@@ -21,9 +21,9 @@ is required.
 | **PQH002** | Warning | `HybridKemEncapsulationResult.SharedSecret` passed directly as the first argument to `AesGcm`/`AesCcm`/`ChaCha20Poly1305`/`HMACSHA*` instead of being fed through `HKDF.Expand` first. |
 | **PQH003** | Warning | `HybridKem.Decapsulate(...)` called earlier in a method body than `HybridSignature.Verify(...)`. Verification must precede decapsulation in sign-then-encrypt flows. |
 | **PQH004** | Warning | `HybridSignature.Verify(...)` called with its bool return value discarded. Ignoring the return is equivalent to skipping signature verification. |
+| **PQH005** | Warning | `AesGcm.Encrypt` / `.Decrypt` called without `associatedData` inside a method body that also calls `HybridKem.Encapsulate` / `.Decapsulate`. Bind the KEM ciphertext as `associatedData`. |
 
-More rules may follow (e.g. PQH005 for AEAD without KEM-ciphertext binding
-as associated data). Suggestions welcome via GitHub issues.
+Suggestions welcome via GitHub issues.
 
 ## Examples
 

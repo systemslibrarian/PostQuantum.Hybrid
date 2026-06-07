@@ -106,34 +106,27 @@ exposes algorithm identifiers but does not implement any negotiation.
 **Plan:** Out of scope for the primitives package. See
 `PostQuantum.Hybrid.AspNetCore` for DI-friendly key wiring patterns.
 
-### `PostQuantum.Hybrid.AspNetCore` — initial release, missing key rotation
+### `PostQuantum.Hybrid.AspNetCore` — key rotation shipped, no IDataProtector adapter
 
-**State:** v1.0 ships `IHybridKemKeyProvider` and `IHybridSignatureKeyProvider`
-that load keys from inline PEM or a file path. Key rotation requires a
-host restart; there is no built-in `IOptionsMonitor` or
-`IDataProtector`-style abstraction yet.
+**State:** v1.0 ships `IRotatingHybridKemKeyProvider` /
+`IRotatingHybridSignatureKeyProvider` with `FileSystemWatcher`-based
+atomic key rotation (`AddRotatingHybridKemKeys` / `AddRotatingHybridSignatureKeys`).
+There is no `IDataProtector`-style adapter yet for ASP.NET Core's
+built-in protection pipeline.
 
-**Plan:** Add `IRotatingHybridKeyProvider` with file-watch and
-configurable rollover windows. (v1.x.)
+**Plan:** Optional `IDataProtector` adapter in v1.x.
 
-### `PostQuantum.Hybrid.Analyzers` — only one rule shipped
+### `PostQuantum.Hybrid.Analyzers` — five rules shipped, more possible
 
-**State:** v1.0 ships PQH001 (undisposed sensitive types). The higher-
-signal rules — `SharedSecret` used as a key without HKDF, verify-after-
-decrypt ordering, ignored `Verify` result, AEAD without `associatedData`
-binding to the KEM ciphertext — are designed but not yet implemented.
+**State:** v1.0 ships PQH001 (undisposed sensitive types), PQH002
+(SharedSecret without HKDF), PQH003 (Decapsulate-before-Verify
+ordering), PQH004 (ignored Verify result), and PQH005 (AEAD without
+KEM-ciphertext-as-associatedData binding). Code-fix providers are
+included for PQH001 (auto-insert `using`) and PQH004 (auto-wrap in
+`if (!...) throw`).
 
-**Plan:** PQH002–PQH005 in v1.x. PQH004 (ignored Verify) is the highest
-priority because it has the lowest false-positive surface.
-
-### `dotnet new pqhybrid-app` template ships only the console scaffold
-
-**State:** The template generates a minimal console app demonstrating
-KEM + signature round trips. There is no `pqhybrid-webapi` or
-`pqhybrid-messenger` template yet.
-
-**Plan:** Add additional templates once their reference samples
-(`WebApiDemo`, `SecureMessenger`) prove stable. (v1.x.)
+**Plan:** Additional rules will be added if real-world misuse patterns
+emerge. Code-fixes for PQH002–PQH005 are good follow-ups.
 
 ## Test / CI gaps
 
@@ -148,21 +141,25 @@ harness driving the corpus.
 **Plan:** Add a SharpFuzz harness for the parsers and run it
 continuously on a separate runner. (v1.x.)
 
-### Mutation testing config exists; CI job does not
+### Mutation testing CI shipped, regression gate not yet
 
-**State:** `stryker-config.json` is checked in. CI does not run Stryker
-on every PR (it's slow); we plan a periodic run.
+**State:** `.github/workflows/mutation.yml` runs Stryker weekly and
+uploads HTML/JSON reports as artifacts. The workflow does not yet
+fail on survival-rate regression past a fixed threshold.
 
-**Plan:** Periodic GitHub Action that fails when survival rate
-regresses past the configured threshold. (v1.x.)
+**Plan:** Wire the regression gate once we have a few weeks of
+baseline data.
 
-### No benchmark baseline in CI
+### Benchmark CI shipped, regression gate not yet
 
-**State:** The benchmarks project exists (BenchmarkDotNet) but CI does
-not enforce a perf-regression threshold.
+**State:** `.github/workflows/benchmark.yml` runs BenchmarkDotNet
+weekly on both TFMs and uploads JSON results as artifacts.
+Measured numbers are pinned in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
+The workflow does not yet fail PRs on perf regression past a fixed
+threshold.
 
 **Plan:** Add a `benchmarks/baseline.json` per OS+TFM and a PR-time
-job that compares. (v1.x.)
+comparison action. (v1.x.)
 
 ## Distribution gaps
 
@@ -174,12 +171,11 @@ Builds **are** deterministic and source-linked via SourceLink.
 **Plan:** SignPath integration once the project qualifies. Sigstore
 provenance attestations are also under evaluation.
 
-### No SBOM
+### SBOM CI workflow shipped
 
-**State:** We do not currently publish a Software Bill of Materials with
-each release.
-
-**Plan:** Generate CycloneDX SBOM in CI; attach to GitHub releases.
+**State:** `.github/workflows/sbom.yml` generates a CycloneDX SBOM per
+package on release and attaches them as release assets.
+**No follow-up required for v1.0.**
 (v1.x.)
 
 ### No API baseline checking

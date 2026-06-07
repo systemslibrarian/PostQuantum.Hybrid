@@ -9,3 +9,4 @@ PQH001  | Security | Warning  | HybridDisposeAnalyzer, [Documentation](https://g
 PQH002  | Security | Warning  | SharedSecretWithoutHkdfAnalyzer, [Documentation](https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/src/PostQuantum.Hybrid.Analyzers/README.md)
 PQH003  | Security | Warning  | DecapsulateBeforeVerifyAnalyzer, [Documentation](https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/src/PostQuantum.Hybrid.Analyzers/README.md)
 PQH004  | Security | Warning  | IgnoredVerifyResultAnalyzer, [Documentation](https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/src/PostQuantum.Hybrid.Analyzers/README.md)
+PQH005  | Security | Warning  | AeadWithoutKemBindingAnalyzer, [Documentation](https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/src/PostQuantum.Hybrid.Analyzers/README.md)

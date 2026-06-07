@@ -30,7 +30,8 @@ adversaries.
 | [**`PostQuantum.Hybrid`**](src/PostQuantum.Hybrid) | The library. Hybrid KEM and hybrid signatures. |
 | [**`PostQuantum.Hybrid.Envelopes`**](src/PostQuantum.Hybrid.Envelopes) | Opinionated `Seal`/`Open` wrappers combining KEM + HKDF + AES-GCM in one call. Anonymous and signed variants. |
 | [**`PostQuantum.Hybrid.AspNetCore`**](src/PostQuantum.Hybrid.AspNetCore) | DI extensions: `AddPostQuantumHybrid(...)`, rotating key providers (`AddRotatingHybridKemKeys(...)`). |
-| [**`PostQuantum.Hybrid.Analyzers`**](src/PostQuantum.Hybrid.Analyzers) | Roslyn analyzers PQH001–PQH004 that catch common misuse at build time. |
+| [**`PostQuantum.Hybrid.Analyzers`**](src/PostQuantum.Hybrid.Analyzers) | Roslyn analyzers **PQH001–PQH005** + code-fix providers that catch common misuse at build time. |
+| [**`PostQuantum.Hybrid.TestingSupport`**](src/PostQuantum.Hybrid.TestingSupport) | Cached test keys, tamper-injection helpers, fake key providers for consumers' test suites. |
 | [**`PostQuantum.Hybrid.Templates`**](templates) | `dotnet new pqhybrid-app` / `pqhybrid-webapi` / `pqhybrid-envelope` scaffolds. |
 
 ## Install
@@ -88,7 +89,7 @@ bool valid = HybridSignature.Verify(signer.PublicKey, message, signature);
 
 ## Samples
 
-The [`samples/`](samples) folder has six focused demos:
+The [`samples/`](samples) folder has seven focused demos:
 
 | Sample | What it shows |
 |---|---|
@@ -98,6 +99,7 @@ The [`samples/`](samples) folder has six focused demos:
 | [`KeyPersistence`](samples/KeyPersistence) | Save and load PEM keys with proper disposal. |
 | [`SecureMessenger`](samples/SecureMessenger) | End-to-end signed-and-encrypted messaging (Alice → Bob). |
 | [`WebApiDemo`](samples/WebApiDemo) | ASP.NET Core Minimal API exercising the AspNetCore package's DI. |
+| [`LargeFileEncryption`](samples/LargeFileEncryption) | Chunked AES-GCM encryption of multi-GB files with one hybrid KEM exchange. |
 
 Run any sample with:
 
@@ -196,21 +198,23 @@ Detailed security guidance:
 ## Repo layout
 
 ```
-src/PostQuantum.Hybrid/                    the library
-src/PostQuantum.Hybrid.Envelopes/          Seal/Open opinionated wrappers
-src/PostQuantum.Hybrid.AspNetCore/         DI + key rotation for ASP.NET Core
-src/PostQuantum.Hybrid.Analyzers/          Roslyn analyzers (PQH001-004)
-tests/PostQuantum.Hybrid.Tests/            xUnit tests (run on net8.0 and net10.0)
-tests/PostQuantum.Hybrid.Envelopes.Tests/  Envelopes tests
-tests/PostQuantum.Hybrid.AspNetCore.Tests/ DI + rotation tests
-tests/PostQuantum.Hybrid.Analyzers.Tests/  analyzer tests
-fuzz/PostQuantum.Hybrid.Fuzz/              property-style fuzz tests
-benchmarks/PostQuantum.Hybrid.Benchmarks/  BenchmarkDotNet suite
-samples/                                   6 focused demos
-templates/                                 3 dotnet new templates
-docs/                                      spec, design, ADRs, threat model
-tools/                                     repo maintenance scripts
-.github/                                   CI, CodeQL, release, SBOM, mutation
+src/PostQuantum.Hybrid/                       the library
+src/PostQuantum.Hybrid.Envelopes/             Seal/Open opinionated wrappers
+src/PostQuantum.Hybrid.AspNetCore/            DI + key rotation for ASP.NET Core
+src/PostQuantum.Hybrid.Analyzers/             Roslyn analyzers + code-fixes (PQH001-005)
+src/PostQuantum.Hybrid.TestingSupport/        test helpers for consumers
+tests/PostQuantum.Hybrid.Tests/               xUnit tests (run on net8.0 and net10.0)
+tests/PostQuantum.Hybrid.Envelopes.Tests/     Envelopes tests
+tests/PostQuantum.Hybrid.AspNetCore.Tests/    DI + rotation tests
+tests/PostQuantum.Hybrid.Analyzers.Tests/     analyzer tests
+tests/PostQuantum.Hybrid.TestingSupport.Tests/ test-helpers tests
+fuzz/PostQuantum.Hybrid.Fuzz/                 property-style fuzz tests
+benchmarks/PostQuantum.Hybrid.Benchmarks/     BenchmarkDotNet suite
+samples/                                      7 focused demos (incl. LargeFileEncryption)
+templates/                                    3 dotnet new templates
+docs/                                         spec, design, ADRs, threat model, perf
+tools/                                        repo maintenance scripts
+.github/                                      CI, CodeQL, release, SBOM, mutation, bench
 ```
 
 ## Development

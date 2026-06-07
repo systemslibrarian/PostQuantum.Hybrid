@@ -1,0 +1,19 @@
+// Validating benchmarks:
+// Benchmark HybridSignatureBenchmarks.Sign: Job-FWRFRR(InvocationCount=4, IterationCount=3, WarmupCount=2) [MessageSize=64]
+//    * Specified InvocationCount (4) must be a multiple of UnrollFactor (16)
+
+// Benchmark HybridSignatureBenchmarks.Verify: Job-FWRFRR(InvocationCount=4, IterationCount=3, WarmupCount=2) [MessageSize=64]
+//    * Specified InvocationCount (4) must be a multiple of UnrollFactor (16)
+
+// Benchmark HybridSignatureBenchmarks.Sign: Job-FWRFRR(InvocationCount=4, IterationCount=3, WarmupCount=2) [MessageSize=1024]
+//    * Specified InvocationCount (4) must be a multiple of UnrollFactor (16)
+
+// Benchmark HybridSignatureBenchmarks.Verify: Job-FWRFRR(InvocationCount=4, IterationCount=3, WarmupCount=2) [MessageSize=1024]
+//    * Specified InvocationCount (4) must be a multiple of UnrollFactor (16)
+
+// Benchmark HybridSignatureBenchmarks.Sign: Job-FWRFRR(InvocationCount=4, IterationCount=3, WarmupCount=2) [MessageSize=65536]
+//    * Specified InvocationCount (4) must be a multiple of UnrollFactor (16)
+
+// Benchmark HybridSignatureBenchmarks.Verify: Job-FWRFRR(InvocationCount=4, IterationCount=3, WarmupCount=2) [MessageSize=65536]
+//    * Specified InvocationCount (4) must be a multiple of UnrollFactor (16)
+
