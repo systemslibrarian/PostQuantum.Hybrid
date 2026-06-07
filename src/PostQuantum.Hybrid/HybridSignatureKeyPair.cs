@@ -1,9 +1,12 @@
+using System.Diagnostics;
+
 namespace PostQuantum.Hybrid;
 
 /// <summary>
 /// A matched hybrid signature public/private key pair. Disposing the pair
 /// disposes the private key.
 /// </summary>
+[DebuggerDisplay("HybridSignatureKeyPair {Algorithm} (PrivateKey REDACTED)")]
 public sealed class HybridSignatureKeyPair : IDisposable
 {
     /// <summary>The signature-verification (public) key.</summary>

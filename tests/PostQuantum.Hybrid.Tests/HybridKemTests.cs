@@ -149,9 +149,9 @@ public class HybridKemTests
     [Fact]
     public void Import_WrongLength_Throws()
     {
-        Assert.Throws<CryptographicException>(() => HybridKemPublicKey.Import(new byte[10]));
-        Assert.Throws<CryptographicException>(() => HybridKemPrivateKey.Import(new byte[10]));
-        Assert.Throws<CryptographicException>(() => HybridKemCiphertext.FromBytes(new byte[10]));
+        Assert.ThrowsAny<CryptographicException>(() => HybridKemPublicKey.Import(new byte[10]));
+        Assert.ThrowsAny<CryptographicException>(() => HybridKemPrivateKey.Import(new byte[10]));
+        Assert.ThrowsAny<CryptographicException>(() => HybridKemCiphertext.FromBytes(new byte[10]));
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public class HybridKemTests
     {
         var bytes = new byte[1217];
         bytes[0] = 0xEE;
-        Assert.Throws<CryptographicException>(() => HybridKemPublicKey.Import(bytes));
+        Assert.ThrowsAny<CryptographicException>(() => HybridKemPublicKey.Import(bytes));
     }
 
     [Fact]

@@ -1,9 +1,12 @@
+using System.Diagnostics;
+
 namespace PostQuantum.Hybrid;
 
 /// <summary>
 /// A matched hybrid KEM public/private key pair. Disposing the pair disposes
 /// the private key.
 /// </summary>
+[DebuggerDisplay("HybridKemKeyPair {Algorithm} (PrivateKey REDACTED)")]
 public sealed class HybridKemKeyPair : IDisposable
 {
     /// <summary>The recipient-shareable public (encapsulation) key.</summary>

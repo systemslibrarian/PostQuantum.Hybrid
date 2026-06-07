@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -7,6 +8,7 @@ namespace PostQuantum.Hybrid;
 /// A hybrid KEM ciphertext produced by <see cref="HybridKem.Encapsulate"/>.
 /// Send this to the holder of the matching <see cref="HybridKemPrivateKey"/>.
 /// </summary>
+[DebuggerDisplay("HybridKemCiphertext {Algorithm} ({ToBytes().Length} bytes)")]
 public sealed class HybridKemCiphertext
 {
     private readonly byte[] _classicalCiphertext;
@@ -43,14 +45,17 @@ public sealed class HybridKemCiphertext
     {
         if (source.Length != AlgorithmSizes.HybridKemCiphertextBytes)
         {
-            throw new CryptographicException(
+            throw new PostQuantumHybridException(
+                HybridFailureReason.InvalidLength,
                 $"Invalid hybrid KEM ciphertext length: expected {AlgorithmSizes.HybridKemCiphertextBytes}, got {source.Length}.");
         }
 
         var algorithm = (HybridKemAlgorithm)source[0];
         if (algorithm != HybridKemAlgorithm.X25519MlKem768)
         {
-            throw new CryptographicException($"Unsupported hybrid KEM algorithm id: {source[0]}.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }
 
         var classical = source.Slice(1, AlgorithmSizes.X25519PublicKeyBytes).ToArray();

@@ -110,11 +110,15 @@ public static class HybridSignature
     {
         if (algorithm != HybridSignatureAlgorithm.Ed25519MlDsa65)
         {
-            throw new CryptographicException($"Unsupported hybrid signature algorithm: {algorithm}.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"Unsupported hybrid signature algorithm: {algorithm}.");
         }
         if (!MlDsaBackend.IsSupported)
         {
-            throw new PlatformNotSupportedException("ML-DSA is not supported on this platform.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.PrimitiveNotSupported,
+                "ML-DSA is not supported on this platform.");
         }
     }
 }

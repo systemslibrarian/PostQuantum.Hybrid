@@ -80,7 +80,7 @@ public class PemRobustnessTests
             -----BEGIN PQH HYBRID KEM PUBLIC KEY-----
             -----END PQH HYBRID KEM PUBLIC KEY-----
             """;
-        Assert.Throws<CryptographicException>(() => HybridKemPublicKey.ImportPem(pem));
+        Assert.ThrowsAny<CryptographicException>(() => HybridKemPublicKey.ImportPem(pem));
     }
 
     [Fact]

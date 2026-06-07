@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -7,6 +8,7 @@ namespace PostQuantum.Hybrid;
 /// A hybrid signature verification (public) key combining a classical key
 /// with a post-quantum key in a single wire-format blob.
 /// </summary>
+[DebuggerDisplay("HybridSignaturePublicKey {Algorithm} ({Export().Length} bytes)")]
 public sealed class HybridSignaturePublicKey
 {
     internal const string PemLabel = "PQH HYBRID SIG PUBLIC KEY";
@@ -48,14 +50,17 @@ public sealed class HybridSignaturePublicKey
     {
         if (source.Length != AlgorithmSizes.HybridSigPublicKeyBytes)
         {
-            throw new CryptographicException(
+            throw new PostQuantumHybridException(
+                HybridFailureReason.InvalidLength,
                 $"Invalid hybrid signature public-key length: expected {AlgorithmSizes.HybridSigPublicKeyBytes}, got {source.Length}.");
         }
 
         var algorithm = (HybridSignatureAlgorithm)source[0];
         if (algorithm != HybridSignatureAlgorithm.Ed25519MlDsa65)
         {
-            throw new CryptographicException($"Unsupported hybrid signature algorithm id: {source[0]}.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"Unsupported hybrid signature algorithm id: {source[0]}.");
         }
 
         var classical = source.Slice(1, AlgorithmSizes.Ed25519PublicKeyBytes).ToArray();

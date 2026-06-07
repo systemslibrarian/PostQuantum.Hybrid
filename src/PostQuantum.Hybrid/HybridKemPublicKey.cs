@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -7,6 +8,7 @@ namespace PostQuantum.Hybrid;
 /// A hybrid KEM public key (recipient-side encapsulation key).
 /// Combines a classical key with a post-quantum key in a single wire-format blob.
 /// </summary>
+[DebuggerDisplay("HybridKemPublicKey {Algorithm} ({Export().Length} bytes)")]
 public sealed class HybridKemPublicKey
 {
     internal const string PemLabel = "PQH HYBRID KEM PUBLIC KEY";
@@ -48,14 +50,17 @@ public sealed class HybridKemPublicKey
     {
         if (source.Length != AlgorithmSizes.HybridKemPublicKeyBytes)
         {
-            throw new CryptographicException(
+            throw new PostQuantumHybridException(
+                HybridFailureReason.InvalidLength,
                 $"Invalid hybrid KEM public-key length: expected {AlgorithmSizes.HybridKemPublicKeyBytes}, got {source.Length}.");
         }
 
         var algorithm = (HybridKemAlgorithm)source[0];
         if (algorithm != HybridKemAlgorithm.X25519MlKem768)
         {
-            throw new CryptographicException($"Unsupported hybrid KEM algorithm id: {source[0]}.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }
 
         var classical = source.Slice(1, AlgorithmSizes.X25519PublicKeyBytes).ToArray();

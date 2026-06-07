@@ -79,7 +79,7 @@ public class KemEdgeCaseTests
         using var pair = HybridKem.GenerateKeyPair();
         using var enc = HybridKem.Encapsulate(pair.PublicKey);
         var bytes = enc.Ciphertext.ToBytes();
-        Assert.Throws<CryptographicException>(() => HybridKemCiphertext.FromBytes(bytes.AsSpan(0, bytes.Length - 1)));
+        Assert.ThrowsAny<CryptographicException>(() => HybridKemCiphertext.FromBytes(bytes.AsSpan(0, bytes.Length - 1)));
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class KemEdgeCaseTests
         var bytes = enc.Ciphertext.ToBytes();
         var padded = new byte[bytes.Length + 1];
         bytes.CopyTo(padded, 0);
-        Assert.Throws<CryptographicException>(() => HybridKemCiphertext.FromBytes(padded));
+        Assert.ThrowsAny<CryptographicException>(() => HybridKemCiphertext.FromBytes(padded));
     }
 
     [Fact]

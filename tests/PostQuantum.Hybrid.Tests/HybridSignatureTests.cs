@@ -150,8 +150,8 @@ public class HybridSignatureTests
     [Fact]
     public void Import_WrongLength_Throws()
     {
-        Assert.Throws<CryptographicException>(() => HybridSignaturePublicKey.Import(new byte[10]));
-        Assert.Throws<CryptographicException>(() => HybridSignaturePrivateKey.Import(new byte[10]));
+        Assert.ThrowsAny<CryptographicException>(() => HybridSignaturePublicKey.Import(new byte[10]));
+        Assert.ThrowsAny<CryptographicException>(() => HybridSignaturePrivateKey.Import(new byte[10]));
     }
 
     [Fact]
@@ -159,6 +159,6 @@ public class HybridSignatureTests
     {
         var bytes = new byte[1985];
         bytes[0] = 0xEE;
-        Assert.Throws<CryptographicException>(() => HybridSignaturePublicKey.Import(bytes));
+        Assert.ThrowsAny<CryptographicException>(() => HybridSignaturePublicKey.Import(bytes));
     }
 }

@@ -91,7 +91,8 @@ public static class HybridKem
 
         if (privateKey.Algorithm != ciphertext.Algorithm)
         {
-            throw new CryptographicException(
+            throw new PostQuantumHybridException(
+                HybridFailureReason.AlgorithmMismatch,
                 $"Algorithm mismatch: private key is {privateKey.Algorithm}, ciphertext is {ciphertext.Algorithm}.");
         }
         EnsureSupported(privateKey.Algorithm);
@@ -124,11 +125,15 @@ public static class HybridKem
     {
         if (algorithm != HybridKemAlgorithm.X25519MlKem768)
         {
-            throw new CryptographicException($"Unsupported hybrid KEM algorithm: {algorithm}.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"Unsupported hybrid KEM algorithm: {algorithm}.");
         }
         if (!MlKemBackend.IsSupported)
         {
-            throw new PlatformNotSupportedException("ML-KEM is not supported on this platform.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.PrimitiveNotSupported,
+                "ML-KEM is not supported on this platform.");
         }
     }
 }

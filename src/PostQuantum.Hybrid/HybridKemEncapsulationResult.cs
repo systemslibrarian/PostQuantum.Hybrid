@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 
 namespace PostQuantum.Hybrid;
@@ -7,6 +8,7 @@ namespace PostQuantum.Hybrid;
 /// the recipient and the 32-byte shared secret derived locally.
 /// Dispose to clear the shared secret.
 /// </summary>
+[DebuggerDisplay("HybridKemEncapsulationResult (Ciphertext bytes; SharedSecret REDACTED)")]
 public sealed class HybridKemEncapsulationResult : IDisposable
 {
     private byte[] _sharedSecret;

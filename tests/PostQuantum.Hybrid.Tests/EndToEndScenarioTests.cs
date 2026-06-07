@@ -30,7 +30,7 @@ public class EndToEndScenarioTests
 
         var packet = AliceSendsToBob("payload"u8.ToArray(), bob.PublicKey, alice.PrivateKey);
         packet[200] ^= 0xFF; // somewhere in the KEM ciphertext, before the signature
-        Assert.Throws<CryptographicException>(() =>
+        Assert.ThrowsAny<CryptographicException>(() =>
             BobReceivesFromAlice(packet, bob.PrivateKey, alice.PublicKey));
     }
 
@@ -42,7 +42,7 @@ public class EndToEndScenarioTests
 
         var packet = AliceSendsToBob("payload"u8.ToArray(), bob.PublicKey, alice.PrivateKey);
         packet[packet.Length - 50] ^= 0xFF; // somewhere in the sig (last 3374 B)
-        Assert.Throws<CryptographicException>(() =>
+        Assert.ThrowsAny<CryptographicException>(() =>
             BobReceivesFromAlice(packet, bob.PrivateKey, alice.PublicKey));
     }
 

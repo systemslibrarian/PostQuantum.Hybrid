@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -7,6 +8,7 @@ namespace PostQuantum.Hybrid;
 /// A hybrid KEM private key (recipient-side decapsulation key).
 /// Must be disposed to clear sensitive material.
 /// </summary>
+[DebuggerDisplay("HybridKemPrivateKey {Algorithm} (REDACTED)")]
 public sealed class HybridKemPrivateKey : IDisposable
 {
     internal const string PemLabel = "PQH HYBRID KEM PRIVATE KEY";
@@ -71,14 +73,17 @@ public sealed class HybridKemPrivateKey : IDisposable
     {
         if (source.Length != AlgorithmSizes.HybridKemPrivateKeyBytes)
         {
-            throw new CryptographicException(
+            throw new PostQuantumHybridException(
+                HybridFailureReason.InvalidLength,
                 $"Invalid hybrid KEM private-key length: expected {AlgorithmSizes.HybridKemPrivateKeyBytes}, got {source.Length}.");
         }
 
         var algorithm = (HybridKemAlgorithm)source[0];
         if (algorithm != HybridKemAlgorithm.X25519MlKem768)
         {
-            throw new CryptographicException($"Unsupported hybrid KEM algorithm id: {source[0]}.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }
 
         var classical = source.Slice(1, AlgorithmSizes.X25519PrivateKeyBytes).ToArray();

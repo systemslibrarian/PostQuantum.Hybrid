@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -7,6 +8,7 @@ namespace PostQuantum.Hybrid;
 /// A hybrid signature signing (private) key. Must be disposed to clear
 /// sensitive material.
 /// </summary>
+[DebuggerDisplay("HybridSignaturePrivateKey {Algorithm} (REDACTED)")]
 public sealed class HybridSignaturePrivateKey : IDisposable
 {
     internal const string PemLabel = "PQH HYBRID SIG PRIVATE KEY";
@@ -71,14 +73,17 @@ public sealed class HybridSignaturePrivateKey : IDisposable
     {
         if (source.Length != AlgorithmSizes.HybridSigPrivateKeyBytes)
         {
-            throw new CryptographicException(
+            throw new PostQuantumHybridException(
+                HybridFailureReason.InvalidLength,
                 $"Invalid hybrid signature private-key length: expected {AlgorithmSizes.HybridSigPrivateKeyBytes}, got {source.Length}.");
         }
 
         var algorithm = (HybridSignatureAlgorithm)source[0];
         if (algorithm != HybridSignatureAlgorithm.Ed25519MlDsa65)
         {
-            throw new CryptographicException($"Unsupported hybrid signature algorithm id: {source[0]}.");
+            throw new PostQuantumHybridException(
+                HybridFailureReason.UnsupportedAlgorithmId,
+                $"Unsupported hybrid signature algorithm id: {source[0]}.");
         }
 
         var classical = source.Slice(1, AlgorithmSizes.Ed25519PrivateKeyBytes).ToArray();
