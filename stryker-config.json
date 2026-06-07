@@ -1,0 +1,29 @@
+{
+  "stryker-config": {
+    "project": "src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj",
+    "test-projects": [
+      "tests/PostQuantum.Hybrid.Tests/PostQuantum.Hybrid.Tests.csproj"
+    ],
+    "target-framework": "net10.0",
+    "language-version": "latest",
+    "thresholds": {
+      "high": 85,
+      "low": 75,
+      "break": 70
+    },
+    "reporters": [
+      "progress",
+      "html",
+      "cleartext-tree",
+      "json"
+    ],
+    "mutate": [
+      "src/PostQuantum.Hybrid/**/*.cs",
+      "!src/PostQuantum.Hybrid/obj/**/*.cs",
+      "!src/PostQuantum.Hybrid/bin/**/*.cs"
+    ],
+    "mutation-level": "Standard",
+    "concurrency": 4,
+    "since": false
+  }
+}

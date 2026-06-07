@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PostQuantum.Hybrid.Samples.WebApiDemo</RootNamespace>
+    <AssemblyName>PostQuantum.Hybrid.Samples.WebApiDemo</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PostQuantum.Hybrid\PostQuantum.Hybrid.csproj" />
+    <ProjectReference Include="..\..\src\PostQuantum.Hybrid.AspNetCore\PostQuantum.Hybrid.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>

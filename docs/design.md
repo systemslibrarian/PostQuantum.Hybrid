@@ -142,19 +142,36 @@ difference between "we shipped a wire-format that's stuck forever" and
 "we can evolve". The cost-benefit is overwhelmingly in favor of including
 it, so we do.
 
-## What's deliberately NOT in v1
+## What ships in v1 vs. what's deferred
 
-- **PKCS#8 / SubjectPublicKeyInfo encoding.** Native .NET's `MLKem.ExportPkcs8PrivateKey`
-  uses a single-algorithm SPKI; a hybrid blob has no standard SPKI form yet.
-  When IETF PQ-hybrid composite-key OIDs stabilize, we'll add support.
+Shipped in v1:
+
+- `PostQuantum.Hybrid` — the primitives library.
+- `PostQuantum.Hybrid.Analyzers` — Roslyn analyzer (PQH001: undisposed
+  sensitive types).
+- `PostQuantum.Hybrid.AspNetCore` — DI extensions for loading keys via
+  `IConfiguration`, exposing `IHybridKemKeyProvider` /
+  `IHybridSignatureKeyProvider`.
+- `PostQuantum.Hybrid.Templates` — `dotnet new pqhybrid-app` console
+  scaffold.
+
+Deliberately NOT in v1 (see [KNOWN-GAPS.md](../KNOWN-GAPS.md) for the
+canonical list):
+
+- **PKCS#8 / SubjectPublicKeyInfo encoding.** Native .NET's
+  `MLKem.ExportPkcs8PrivateKey` uses a single-algorithm SPKI; a hybrid
+  blob has no standard SPKI form yet. When IETF PQ-hybrid composite-key
+  OIDs stabilize, we'll add support.
 - **Algorithm negotiation.** This is a protocol concern, not a primitives
   concern. The library exposes the algorithm identifier so callers can
   negotiate at their layer.
 - **Streaming sign/verify or stream encapsulation.** v1 takes complete
   messages. ML-DSA does not support pre-hashed signing in a generic way
   in .NET 10 yet; once it does, we'll add `SignPreHash` variants.
-- **AspNetCore / DI helpers, Roslyn analyzers, dotnet new templates.**
-  Planned for follow-up packages: `PostQuantum.Hybrid.AspNetCore`,
-  `PostQuantum.Hybrid.Analyzers`, `dotnet new pqhybrid-app`.
+- **Key rotation in the AspNetCore package.** v1 loads keys once at
+  startup. A future `IRotatingHybridKeyProvider` will support live reload.
+- **Additional analyzer rules.** PQH002–PQH005 (shared-secret misuse,
+  verify ordering, AEAD AAD binding) are designed but not implemented
+  in v1.
 - **Hardware acceleration hooks.** Both native .NET and BouncyCastle use
   the best available implementation for the host CPU automatically.

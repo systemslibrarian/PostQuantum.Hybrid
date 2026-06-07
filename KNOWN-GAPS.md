@@ -3,8 +3,11 @@
 This document is the place where we are deliberately honest about what
 PostQuantum.Hybrid **does not** do. Every entry here is either (a) on the
 roadmap, (b) intentionally out of scope, or (c) something we'd accept a
-PR for. The README and SECURITY.md are not allowed to make claims that
-contradict this file.
+PR for. The README, SECURITY.md, and docs/ are not allowed to make claims
+that contradict this file.
+
+**Documentation coherence is a release gate.** Stale claims here are
+treated as bugs. If you find a gap not listed here, please open an issue.
 
 ## Cryptographic gaps
 
@@ -100,77 +103,90 @@ exposes algorithm identifiers but does not implement any negotiation.
 
 **Impact:** Callers must implement negotiation themselves.
 
-**Plan:** Out of scope. A separate `PostQuantum.Hybrid.AspNetCore`
-package (planned) may provide opinionated helpers.
+**Plan:** Out of scope for the primitives package. See
+`PostQuantum.Hybrid.AspNetCore` for DI-friendly key wiring patterns.
 
-### No `PostQuantum.Hybrid.AspNetCore` package yet
+### `PostQuantum.Hybrid.AspNetCore` — initial release, missing key rotation
 
-**State:** No DI extensions, no helpers for typical ASP.NET patterns
-(key rotation services, IDataProtector-style abstractions).
+**State:** v1.0 ships `IHybridKemKeyProvider` and `IHybridSignatureKeyProvider`
+that load keys from inline PEM or a file path. Key rotation requires a
+host restart; there is no built-in `IOptionsMonitor` or
+`IDataProtector`-style abstraction yet.
 
-**Plan:** Ship as a separate package alongside or shortly after v1.0.
+**Plan:** Add `IRotatingHybridKeyProvider` with file-watch and
+configurable rollover windows. (v1.x.)
 
-### No Roslyn analyzers yet
+### `PostQuantum.Hybrid.Analyzers` — only one rule shipped
 
-**State:** Common misuse patterns (using shared secret directly,
-forgetting to dispose private keys, swapping verify/decrypt order) are
-not detected by an analyzer.
+**State:** v1.0 ships PQH001 (undisposed sensitive types). The higher-
+signal rules — `SharedSecret` used as a key without HKDF, verify-after-
+decrypt ordering, ignored `Verify` result, AEAD without `associatedData`
+binding to the KEM ciphertext — are designed but not yet implemented.
 
-**Plan:** Ship `PostQuantum.Hybrid.Analyzers` as a separate package.
-Initial rules listed in [docs/adr/](docs/adr/) backlog.
+**Plan:** PQH002–PQH005 in v1.x. PQH004 (ignored Verify) is the highest
+priority because it has the lowest false-positive surface.
 
-### No `dotnet new pqhybrid` template
+### `dotnet new pqhybrid-app` template ships only the console scaffold
 
-**State:** Starting a new app that uses PostQuantum.Hybrid means
-copying from `samples/`.
+**State:** The template generates a minimal console app demonstrating
+KEM + signature round trips. There is no `pqhybrid-webapi` or
+`pqhybrid-messenger` template yet.
 
-**Plan:** Ship a template post-v1.0.
+**Plan:** Add additional templates once their reference samples
+(`WebApiDemo`, `SecureMessenger`) prove stable. (v1.x.)
 
-## Test/CI gaps
+## Test / CI gaps
 
-### No fuzz tests
+### Property-style fuzz tests, but no coverage-guided fuzzing
 
-**State:** The unit test suite includes adversarial inputs (truncated
-blobs, wrong algorithm-id, tampered bytes) but is not running continuous
-fuzzing.
+**State:** `fuzz/PostQuantum.Hybrid.Fuzz` runs ~7,200 random/mutated
+inputs per execution through every parser entry point and asserts only
+expected exception types fire. This catches "parser crashes" reliably.
+It is **not** coverage-guided fuzzing — there is no AFL / libFuzzer
+harness driving the corpus.
 
-**Plan:** Add a `fuzz/PostQuantum.Hybrid.Fuzz` project using SharpFuzz
-or libFuzzer-via-CLR. (Tier 2.)
+**Plan:** Add a SharpFuzz harness for the parsers and run it
+continuously on a separate runner. (v1.x.)
 
-### No mutation testing
+### Mutation testing config exists; CI job does not
 
-**State:** Test quality has not been validated by mutation testing
-(Stryker.NET).
+**State:** `stryker-config.json` is checked in. CI does not run Stryker
+on every PR (it's slow); we plan a periodic run.
 
-**Plan:** Add `stryker-config.json` and a periodic CI job. (Tier 2.)
+**Plan:** Periodic GitHub Action that fails when survival rate
+regresses past the configured threshold. (v1.x.)
 
 ### No benchmark baseline in CI
 
 **State:** The benchmarks project exists (BenchmarkDotNet) but CI does
 not enforce a perf-regression threshold.
 
-**Plan:** Add a `benchmarks/baseline.json` and a PR-time job that
-compares. (Tier 2.)
+**Plan:** Add a `benchmarks/baseline.json` per OS+TFM and a PR-time
+job that compares. (v1.x.)
 
 ## Distribution gaps
 
 ### No signed package
 
-**State:** Released NuGet packages are not Authenticode/PGP-signed and
-are not produced from a reproducible build.
+**State:** Released NuGet packages are not Authenticode/PGP-signed.
+Builds **are** deterministic and source-linked via SourceLink.
 
-**Plan:** SignPath integration once the project is stable enough to
-qualify; reproducible builds via `ContinuousIntegrationBuild=true` and
-SourceLink (already on the v1 list).
+**Plan:** SignPath integration once the project qualifies. Sigstore
+provenance attestations are also under evaluation.
 
 ### No SBOM
 
 **State:** We do not currently publish a Software Bill of Materials with
 each release.
 
-**Plan:** Generate CycloneDX SBOM in CI; attach to releases. (Tier 2.)
+**Plan:** Generate CycloneDX SBOM in CI; attach to GitHub releases.
+(v1.x.)
 
----
+### No API baseline checking
 
-If you find a gap not listed here, please open an issue. Honesty about
-gaps is more useful than the appearance of completeness.
+**State:** A renamed or removed public type would only be caught by
+human PR review. There is no `Microsoft.CodeAnalysis.PublicApiAnalyzers`
+configuration.
+
+**Plan:** Add `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` and
+the analyzer. (v1.x.)
