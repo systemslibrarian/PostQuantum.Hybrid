@@ -92,7 +92,18 @@ public sealed class HybridKemPrivateKey : IDisposable
     }
 
     /// <summary>Parses a hybrid KEM private key from PEM.</summary>
-    public static HybridKemPrivateKey ImportPem(string pem) => Import(PemFormatter.Decode(pem, PemLabel));
+    public static HybridKemPrivateKey ImportPem(string pem)
+    {
+        var decoded = PemFormatter.Decode(pem, PemLabel);
+        try
+        {
+            return Import(decoded);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(decoded);
+        }
+    }
 
     /// <summary>Clears the sensitive key material held by this instance.</summary>
     public void Dispose()

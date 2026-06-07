@@ -13,6 +13,7 @@
 //     using this library with the keys held in a process boundary.
 // =============================================================================
 
+using System.Security.Cryptography;
 using PostQuantum.Hybrid;
 
 Console.WriteLine("PostQuantum.Hybrid sample: PEM key persistence\n");
@@ -54,7 +55,8 @@ try
     {
         var recovered = HybridKem.Decapsulate(kemPriv, enc.Ciphertext);
         Console.WriteLine($"[runtime] KEM round-trip: " +
-                          (enc.SharedSecret.AsSpan().SequenceEqual(recovered) ? "OK" : "FAIL"));
+                          (CryptographicOperations.FixedTimeEquals(enc.SharedSecret, recovered) ? "OK" : "FAIL"));
+        CryptographicOperations.ZeroMemory(recovered);
     }
 
     Console.WriteLine("[runtime] reloading signature keys and round-tripping...");

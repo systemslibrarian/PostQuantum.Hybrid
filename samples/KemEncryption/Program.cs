@@ -54,16 +54,19 @@ static byte[] EncryptToRecipient(HybridKemPublicKey recipientPublicKey, ReadOnly
     using var encapsulation = HybridKem.Encapsulate(recipientPublicKey);
     var aesKey = DeriveAesKey(encapsulation.SharedSecret);
 
+    // Compute the KEM ciphertext FIRST so we can bind it into the AEAD
+    // as associatedData — without this, an attacker could swap KEM
+    // ciphertexts across exchanges without breaking the tag.
+    var kemCt = encapsulation.Ciphertext.ToBytes();
+
     var nonce = RandomNumberGenerator.GetBytes(NonceSize);
     var ciphertext = new byte[plaintext.Length];
     var tag = new byte[TagSize];
 
     using (var aes = new AesGcm(aesKey, TagSize))
     {
-        aes.Encrypt(nonce, plaintext, ciphertext, tag);
+        aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
     }
-
-    var kemCt = encapsulation.Ciphertext.ToBytes();
     var envelope = new byte[kemCt.Length + NonceSize + TagSize + ciphertext.Length];
     var offset = 0;
     kemCt.CopyTo(envelope.AsSpan(offset)); offset += kemCt.Length;
@@ -94,7 +97,7 @@ static byte[] DecryptFromSender(HybridKemPrivateKey recipientPrivateKey, ReadOnl
     var plaintext = new byte[ciphertext.Length];
     using (var aes = new AesGcm(aesKey, TagSize))
     {
-        aes.Decrypt(nonce, ciphertext, tag, plaintext);
+        aes.Decrypt(nonce, ciphertext, tag, plaintext, associatedData: kemCt);
     }
     CryptographicOperations.ZeroMemory(aesKey);
     return plaintext;

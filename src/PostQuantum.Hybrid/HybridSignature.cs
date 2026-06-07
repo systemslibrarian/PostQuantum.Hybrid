@@ -53,13 +53,25 @@ public static class HybridSignature
         ArgumentNullException.ThrowIfNull(privateKey);
         EnsureSupported(privateKey.Algorithm);
 
-        // Classical: Ed25519.
-        var bcPriv = new Ed25519PrivateKeyParameters(privateKey.ClassicalKeySpan.ToArray(), 0);
-        var signer = new Ed25519Signer();
-        signer.Init(forSigning: true, bcPriv);
-        var dataArray = data.ToArray();
-        signer.BlockUpdate(dataArray, 0, dataArray.Length);
-        var classicalSig = signer.GenerateSignature();
+        // Classical: Ed25519. Materialize the seed into a local buffer we
+        // can zero in a finally block; BouncyCastle's parameter object
+        // also retains its own copy of the seed, but minimizing our own
+        // dangling references is still worthwhile.
+        var classicalSeed = privateKey.ClassicalKeySpan.ToArray();
+        byte[] classicalSig;
+        try
+        {
+            var bcPriv = new Ed25519PrivateKeyParameters(classicalSeed, 0);
+            var signer = new Ed25519Signer();
+            signer.Init(forSigning: true, bcPriv);
+            var dataArray = data.ToArray();
+            signer.BlockUpdate(dataArray, 0, dataArray.Length);
+            classicalSig = signer.GenerateSignature();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(classicalSeed);
+        }
 
         // Post-quantum: ML-DSA-65 with empty context (FIPS 204 "pure" ML-DSA).
         var pqSig = MlDsaBackend.SignData(privateKey.PqKeySpan, data);

@@ -92,7 +92,18 @@ public sealed class HybridSignaturePrivateKey : IDisposable
     }
 
     /// <summary>Parses a hybrid signature private key from PEM.</summary>
-    public static HybridSignaturePrivateKey ImportPem(string pem) => Import(PemFormatter.Decode(pem, PemLabel));
+    public static HybridSignaturePrivateKey ImportPem(string pem)
+    {
+        var decoded = PemFormatter.Decode(pem, PemLabel);
+        try
+        {
+            return Import(decoded);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(decoded);
+        }
+    }
 
     /// <summary>Clears the sensitive key material held by this instance.</summary>
     public void Dispose()

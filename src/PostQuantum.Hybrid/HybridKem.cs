@@ -98,12 +98,22 @@ public static class HybridKem
         EnsureSupported(privateKey.Algorithm);
 
         // Classical: X25519 agreement between recipient private and ephemeral public.
-        var recipientPriv = new X25519PrivateKeyParameters(privateKey.ClassicalKeySpan.ToArray(), 0);
-        var ephemeralPub = new X25519PublicKeyParameters(ciphertext.ClassicalSpan.ToArray(), 0);
-        var agreement = new X25519Agreement();
-        agreement.Init(recipientPriv);
-        var classicalSecret = new byte[agreement.AgreementSize];
-        agreement.CalculateAgreement(ephemeralPub, classicalSecret, 0);
+        // Materialize the recipient's seed into a local buffer we can zero
+        // in a finally block.
+        var classicalSeed = privateKey.ClassicalKeySpan.ToArray();
+        var classicalSecret = new byte[AlgorithmSizes.X25519SharedSecretBytes];
+        try
+        {
+            var recipientPriv = new X25519PrivateKeyParameters(classicalSeed, 0);
+            var ephemeralPub = new X25519PublicKeyParameters(ciphertext.ClassicalSpan.ToArray(), 0);
+            var agreement = new X25519Agreement();
+            agreement.Init(recipientPriv);
+            agreement.CalculateAgreement(ephemeralPub, classicalSecret, 0);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(classicalSeed);
+        }
 
         // Post-quantum: ML-KEM decapsulate. Implicit rejection means malformed
         // ciphertexts yield pseudorandom secrets; the combined secret will simply

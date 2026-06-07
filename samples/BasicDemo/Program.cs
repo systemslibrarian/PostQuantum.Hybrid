@@ -28,6 +28,9 @@ static void KemDemo()
     Console.WriteLine($"Alice's shared:    {Hex(aliceSecret)}");
 
     Console.WriteLine($"Match: {CryptographicOperations.FixedTimeEquals(encapsulation.SharedSecret, aliceSecret)}");
+
+    // Zero the recovered secret once we're done with it.
+    CryptographicOperations.ZeroMemory(aliceSecret);
 }
 
 static void SignatureDemo()

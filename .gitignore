@@ -30,6 +30,12 @@ coverage*.xml
 # Build artifacts
 artifacts/
 
+# BenchmarkDotNet output
+BenchmarkDotNet.Artifacts/
+
+# Stryker mutation testing output
+StrykerOutput/
+
 # OS
 .DS_Store
 Thumbs.db
