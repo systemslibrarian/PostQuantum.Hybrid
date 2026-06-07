@@ -1,0 +1,72 @@
+#nullable enable
+PostQuantum.Hybrid.HybridFailureReason
+PostQuantum.Hybrid.HybridFailureReason.AlgorithmMismatch = 3 -> PostQuantum.Hybrid.HybridFailureReason
+PostQuantum.Hybrid.HybridFailureReason.InvalidLength = 1 -> PostQuantum.Hybrid.HybridFailureReason
+PostQuantum.Hybrid.HybridFailureReason.PrimitiveNotSupported = 4 -> PostQuantum.Hybrid.HybridFailureReason
+PostQuantum.Hybrid.HybridFailureReason.Unknown = 0 -> PostQuantum.Hybrid.HybridFailureReason
+PostQuantum.Hybrid.HybridFailureReason.UnsupportedAlgorithmId = 2 -> PostQuantum.Hybrid.HybridFailureReason
+PostQuantum.Hybrid.HybridKem
+PostQuantum.Hybrid.HybridKemAlgorithm
+PostQuantum.Hybrid.HybridKemAlgorithm.X25519MlKem768 = 1 -> PostQuantum.Hybrid.HybridKemAlgorithm
+PostQuantum.Hybrid.HybridKemCiphertext
+PostQuantum.Hybrid.HybridKemCiphertext.Algorithm.get -> PostQuantum.Hybrid.HybridKemAlgorithm
+PostQuantum.Hybrid.HybridKemCiphertext.ToBytes() -> byte[]!
+PostQuantum.Hybrid.HybridKemEncapsulationResult
+PostQuantum.Hybrid.HybridKemEncapsulationResult.Ciphertext.get -> PostQuantum.Hybrid.HybridKemCiphertext!
+PostQuantum.Hybrid.HybridKemEncapsulationResult.Dispose() -> void
+PostQuantum.Hybrid.HybridKemEncapsulationResult.SharedSecret.get -> byte[]!
+PostQuantum.Hybrid.HybridKemKeyPair
+PostQuantum.Hybrid.HybridKemKeyPair.Algorithm.get -> PostQuantum.Hybrid.HybridKemAlgorithm
+PostQuantum.Hybrid.HybridKemKeyPair.Dispose() -> void
+PostQuantum.Hybrid.HybridKemKeyPair.PrivateKey.get -> PostQuantum.Hybrid.HybridKemPrivateKey!
+PostQuantum.Hybrid.HybridKemKeyPair.PublicKey.get -> PostQuantum.Hybrid.HybridKemPublicKey!
+PostQuantum.Hybrid.HybridKemPrivateKey
+PostQuantum.Hybrid.HybridKemPrivateKey.Algorithm.get -> PostQuantum.Hybrid.HybridKemAlgorithm
+PostQuantum.Hybrid.HybridKemPrivateKey.Dispose() -> void
+PostQuantum.Hybrid.HybridKemPrivateKey.Export() -> byte[]!
+PostQuantum.Hybrid.HybridKemPrivateKey.ExportPem() -> string!
+PostQuantum.Hybrid.HybridKemPublicKey
+PostQuantum.Hybrid.HybridKemPublicKey.Algorithm.get -> PostQuantum.Hybrid.HybridKemAlgorithm
+PostQuantum.Hybrid.HybridKemPublicKey.Export() -> byte[]!
+PostQuantum.Hybrid.HybridKemPublicKey.ExportPem() -> string!
+PostQuantum.Hybrid.HybridSignature
+PostQuantum.Hybrid.HybridSignatureAlgorithm
+PostQuantum.Hybrid.HybridSignatureAlgorithm.Ed25519MlDsa65 = 1 -> PostQuantum.Hybrid.HybridSignatureAlgorithm
+PostQuantum.Hybrid.HybridSignatureKeyPair
+PostQuantum.Hybrid.HybridSignatureKeyPair.Algorithm.get -> PostQuantum.Hybrid.HybridSignatureAlgorithm
+PostQuantum.Hybrid.HybridSignatureKeyPair.Dispose() -> void
+PostQuantum.Hybrid.HybridSignatureKeyPair.PrivateKey.get -> PostQuantum.Hybrid.HybridSignaturePrivateKey!
+PostQuantum.Hybrid.HybridSignatureKeyPair.PublicKey.get -> PostQuantum.Hybrid.HybridSignaturePublicKey!
+PostQuantum.Hybrid.HybridSignaturePrivateKey
+PostQuantum.Hybrid.HybridSignaturePrivateKey.Algorithm.get -> PostQuantum.Hybrid.HybridSignatureAlgorithm
+PostQuantum.Hybrid.HybridSignaturePrivateKey.Dispose() -> void
+PostQuantum.Hybrid.HybridSignaturePrivateKey.Export() -> byte[]!
+PostQuantum.Hybrid.HybridSignaturePrivateKey.ExportPem() -> string!
+PostQuantum.Hybrid.HybridSignaturePublicKey
+PostQuantum.Hybrid.HybridSignaturePublicKey.Algorithm.get -> PostQuantum.Hybrid.HybridSignatureAlgorithm
+PostQuantum.Hybrid.HybridSignaturePublicKey.Export() -> byte[]!
+PostQuantum.Hybrid.HybridSignaturePublicKey.ExportPem() -> string!
+PostQuantum.Hybrid.PostQuantumHybridException
+PostQuantum.Hybrid.PostQuantumHybridException.PostQuantumHybridException(PostQuantum.Hybrid.HybridFailureReason reason, string! message) -> void
+PostQuantum.Hybrid.PostQuantumHybridException.PostQuantumHybridException(PostQuantum.Hybrid.HybridFailureReason reason, string! message, System.Exception! innerException) -> void
+PostQuantum.Hybrid.PostQuantumHybridException.Reason.get -> PostQuantum.Hybrid.HybridFailureReason
+static PostQuantum.Hybrid.HybridKem.Decapsulate(PostQuantum.Hybrid.HybridKemPrivateKey! privateKey, PostQuantum.Hybrid.HybridKemCiphertext! ciphertext) -> byte[]!
+static PostQuantum.Hybrid.HybridKem.Decapsulate(PostQuantum.Hybrid.HybridKemPrivateKey! privateKey, System.ReadOnlySpan<byte> ciphertextBytes) -> byte[]!
+static PostQuantum.Hybrid.HybridKem.Default.get -> PostQuantum.Hybrid.HybridKemAlgorithm
+static PostQuantum.Hybrid.HybridKem.Encapsulate(PostQuantum.Hybrid.HybridKemPublicKey! publicKey) -> PostQuantum.Hybrid.HybridKemEncapsulationResult!
+static PostQuantum.Hybrid.HybridKem.GenerateKeyPair() -> PostQuantum.Hybrid.HybridKemKeyPair!
+static PostQuantum.Hybrid.HybridKem.GenerateKeyPair(PostQuantum.Hybrid.HybridKemAlgorithm algorithm) -> PostQuantum.Hybrid.HybridKemKeyPair!
+static PostQuantum.Hybrid.HybridKemCiphertext.FromBytes(System.ReadOnlySpan<byte> source) -> PostQuantum.Hybrid.HybridKemCiphertext!
+static PostQuantum.Hybrid.HybridKemPrivateKey.Import(System.ReadOnlySpan<byte> source) -> PostQuantum.Hybrid.HybridKemPrivateKey!
+static PostQuantum.Hybrid.HybridKemPrivateKey.ImportPem(string! pem) -> PostQuantum.Hybrid.HybridKemPrivateKey!
+static PostQuantum.Hybrid.HybridKemPublicKey.Import(System.ReadOnlySpan<byte> source) -> PostQuantum.Hybrid.HybridKemPublicKey!
+static PostQuantum.Hybrid.HybridKemPublicKey.ImportPem(string! pem) -> PostQuantum.Hybrid.HybridKemPublicKey!
+static PostQuantum.Hybrid.HybridSignature.Default.get -> PostQuantum.Hybrid.HybridSignatureAlgorithm
+static PostQuantum.Hybrid.HybridSignature.GenerateKeyPair() -> PostQuantum.Hybrid.HybridSignatureKeyPair!
+static PostQuantum.Hybrid.HybridSignature.GenerateKeyPair(PostQuantum.Hybrid.HybridSignatureAlgorithm algorithm) -> PostQuantum.Hybrid.HybridSignatureKeyPair!
+static PostQuantum.Hybrid.HybridSignature.Sign(PostQuantum.Hybrid.HybridSignaturePrivateKey! privateKey, System.ReadOnlySpan<byte> data) -> byte[]!
+static PostQuantum.Hybrid.HybridSignature.Verify(PostQuantum.Hybrid.HybridSignaturePublicKey! publicKey, System.ReadOnlySpan<byte> data, System.ReadOnlySpan<byte> signature) -> bool
+static PostQuantum.Hybrid.HybridSignaturePrivateKey.Import(System.ReadOnlySpan<byte> source) -> PostQuantum.Hybrid.HybridSignaturePrivateKey!
+static PostQuantum.Hybrid.HybridSignaturePrivateKey.ImportPem(string! pem) -> PostQuantum.Hybrid.HybridSignaturePrivateKey!
+static PostQuantum.Hybrid.HybridSignaturePublicKey.Import(System.ReadOnlySpan<byte> source) -> PostQuantum.Hybrid.HybridSignaturePublicKey!
+static PostQuantum.Hybrid.HybridSignaturePublicKey.ImportPem(string! pem) -> PostQuantum.Hybrid.HybridSignaturePublicKey!

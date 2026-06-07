@@ -1,0 +1,51 @@
+name: SBOM
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # attach SBOM to release
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Install CycloneDX
+        run: dotnet tool install --global CycloneDX
+
+      - name: Restore
+        run: dotnet restore PostQuantum.Hybrid.slnx
+
+      - name: Generate SBOM for PostQuantum.Hybrid
+        run: dotnet CycloneDX src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj -o sbom -f sbom-postquantum-hybrid.json --json
+
+      - name: Generate SBOM for PostQuantum.Hybrid.AspNetCore
+        run: dotnet CycloneDX src/PostQuantum.Hybrid.AspNetCore/PostQuantum.Hybrid.AspNetCore.csproj -o sbom -f sbom-postquantum-hybrid-aspnetcore.json --json
+
+      - name: Generate SBOM for PostQuantum.Hybrid.Envelopes
+        run: dotnet CycloneDX src/PostQuantum.Hybrid.Envelopes/PostQuantum.Hybrid.Envelopes.csproj -o sbom -f sbom-postquantum-hybrid-envelopes.json --json
+
+      - name: Generate SBOM for PostQuantum.Hybrid.Analyzers
+        run: dotnet CycloneDX src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj -o sbom -f sbom-postquantum-hybrid-analyzers.json --json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom/*.json
+
+      - name: Attach SBOMs to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sbom/*.json

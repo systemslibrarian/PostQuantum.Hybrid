@@ -60,4 +60,48 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Add a rotating hybrid KEM key provider that watches its on-disk
+    /// PEM files and atomically swaps keys when they change. Both public-
+    /// and private-key file paths must be supplied; inline PEM is not
+    /// supported for rotation (the source must be reloadable).
+    /// </summary>
+    public static IServiceCollection AddRotatingHybridKemKeys(
+        this IServiceCollection services,
+        string publicKeyPath,
+        string privateKeyPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(publicKeyPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(privateKeyPath);
+
+        services.AddSingleton<IRotatingHybridKemKeyProvider>(sp =>
+        {
+            var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("PostQuantum.Hybrid.RotatingKemKeyProvider");
+            return new RotatingHybridKemKeyProvider(publicKeyPath, privateKeyPath, logger);
+        });
+        services.AddSingleton<IHybridKemKeyProvider>(sp => sp.GetRequiredService<IRotatingHybridKemKeyProvider>());
+        return services;
+    }
+
+    /// <summary>
+    /// Add a rotating hybrid signature key provider that watches its
+    /// on-disk PEM files and atomically swaps keys when they change.
+    /// </summary>
+    public static IServiceCollection AddRotatingHybridSignatureKeys(
+        this IServiceCollection services,
+        string publicKeyPath,
+        string privateKeyPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(publicKeyPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(privateKeyPath);
+
+        services.AddSingleton<IRotatingHybridSignatureKeyProvider>(sp =>
+        {
+            var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("PostQuantum.Hybrid.RotatingSignatureKeyProvider");
+            return new RotatingHybridSignatureKeyProvider(publicKeyPath, privateKeyPath, logger);
+        });
+        services.AddSingleton<IHybridSignatureKeyProvider>(sp => sp.GetRequiredService<IRotatingHybridSignatureKeyProvider>());
+        return services;
+    }
 }

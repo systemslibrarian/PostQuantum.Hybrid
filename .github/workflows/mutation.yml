@@ -1,0 +1,42 @@
+name: Mutation testing
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stryker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Install dotnet-stryker
+        run: dotnet tool install -g dotnet-stryker
+
+      - name: Restore + build (Release)
+        run: |
+          dotnet restore PostQuantum.Hybrid.slnx
+          dotnet build PostQuantum.Hybrid.slnx --configuration Release --no-restore
+
+      - name: Run Stryker
+        working-directory: src/PostQuantum.Hybrid
+        run: dotnet stryker --reporter "json" --reporter "html" --reporter "progress"
+
+      - name: Upload Stryker report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: src/PostQuantum.Hybrid/StrykerOutput/
+          retention-days: 30
