@@ -17,5 +17,6 @@ options considered, what we picked, and why.
 | [0010](0010-aspnetcore-key-rotation.md) | AspNetCore key rotation via `FileSystemWatcher` |
 | [0011](0011-typed-exception-taxonomy.md) | Typed `PostQuantumHybridException` with `HybridFailureReason` enum |
 | [0012](0012-runtime-backend-fallback.md) | Runtime fallback to BouncyCastle when native ML-KEM/ML-DSA is unavailable |
+| [0013](0013-xwing-combiner-preview.md) | X-Wing combiner at algorithm-id 0x02 (preview) |
 
 Status legend: **Accepted** • **Superseded** • **Deprecated**

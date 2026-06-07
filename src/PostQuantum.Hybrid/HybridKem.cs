@@ -76,7 +76,13 @@ public static class HybridKem
         using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
         MlKemBackend.Encapsulate(publicKey.PqKeySpan, pqCiphertext, pqSecret.Span);
 
-        var combined = KemCombiner.Combine(classicalSecret, pqSecret.ReadOnlySpan, classicalCiphertext, pqCiphertext);
+        var combiner = KemCombiner.ForAlgorithm(publicKey.Algorithm);
+        var combined = new byte[AlgorithmSizes.HybridSharedSecretBytes];
+        combiner.Combine(
+            classicalSecret, pqSecret.ReadOnlySpan,
+            classicalCiphertext, pqCiphertext,
+            publicKey.ClassicalKeySpan,
+            combined);
         CryptographicOperations.ZeroMemory(classicalSecret);
 
         var ciphertext = new HybridKemCiphertext(publicKey.Algorithm, classicalCiphertext, pqCiphertext);
@@ -99,8 +105,12 @@ public static class HybridKem
 
         // Classical: X25519 agreement between recipient private and ephemeral public.
         // Materialize the recipient's seed into a SecureBuffer that zeroes
-        // itself on scope exit, even if the agreement throws.
+        // itself on scope exit, even if the agreement throws. We also need
+        // the recipient's classical PUBLIC key for the X-Wing combiner
+        // (algorithm-id 0x02 binds pk_X into the SHA3 input); derive it
+        // from the recipient private inside the same secure scope.
         var classicalSecret = new byte[AlgorithmSizes.X25519SharedSecretBytes];
+        var recipientClassicalPub = new byte[AlgorithmSizes.X25519PublicKeyBytes];
         using (var classicalSeed = new SecureBuffer(privateKey.ClassicalKeySpan.Length))
         {
             privateKey.ClassicalKeySpan.CopyTo(classicalSeed.Span);
@@ -109,6 +119,7 @@ public static class HybridKem
             var agreement = new X25519Agreement();
             agreement.Init(recipientPriv);
             agreement.CalculateAgreement(ephemeralPub, classicalSecret, 0);
+            recipientPriv.GeneratePublicKey().Encode(recipientClassicalPub, 0);
         }
 
         // Post-quantum: ML-KEM decapsulate. Implicit rejection means malformed
@@ -117,7 +128,13 @@ public static class HybridKem
         using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
         MlKemBackend.Decapsulate(privateKey.PqKeySpan, ciphertext.PqSpan, pqSecret.Span);
 
-        var combined = KemCombiner.Combine(classicalSecret, pqSecret.ReadOnlySpan, ciphertext.ClassicalSpan, ciphertext.PqSpan);
+        var combiner = KemCombiner.ForAlgorithm(privateKey.Algorithm);
+        var combined = new byte[AlgorithmSizes.HybridSharedSecretBytes];
+        combiner.Combine(
+            classicalSecret, pqSecret.ReadOnlySpan,
+            ciphertext.ClassicalSpan, ciphertext.PqSpan,
+            recipientClassicalPub,
+            combined);
         CryptographicOperations.ZeroMemory(classicalSecret);
         return combined;
     }
@@ -164,14 +181,18 @@ public static class HybridKem
 
     private static void EnsureSupported(HybridKemAlgorithm algorithm)
     {
-        if (algorithm != HybridKemAlgorithm.X25519MlKem768)
+        switch (algorithm)
         {
-            throw new PostQuantumHybridException(
-                HybridFailureReason.UnsupportedAlgorithmId,
-                $"Unsupported hybrid KEM algorithm: {algorithm}.");
+            case HybridKemAlgorithm.X25519MlKem768:
+            case HybridKemAlgorithm.X25519MlKem768XWing:
+                // ML-KEM is always available via the BouncyCastle fallback;
+                // MlKemBackend prefers the native .NET 10 implementation when
+                // MLKem.IsSupported is true and otherwise transparently uses BC.
+                return;
+            default:
+                throw new PostQuantumHybridException(
+                    HybridFailureReason.UnsupportedAlgorithmId,
+                    $"Unsupported hybrid KEM algorithm: {algorithm}.");
         }
-        // ML-KEM is always available via the BouncyCastle fallback; MlKemBackend
-        // prefers the native .NET 10 implementation when MLKem.IsSupported is true
-        // and otherwise transparently uses BouncyCastle.
     }
 }

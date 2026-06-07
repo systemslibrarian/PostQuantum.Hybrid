@@ -57,7 +57,8 @@ public sealed class HybridKemPublicKey
         }
 
         var algorithm = (HybridKemAlgorithm)source[0];
-        if (algorithm != HybridKemAlgorithm.X25519MlKem768)
+        if (algorithm != HybridKemAlgorithm.X25519MlKem768 &&
+            algorithm != HybridKemAlgorithm.X25519MlKem768XWing)
         {
             throw new HybridKeyParseException(
                 HybridFailureReason.UnsupportedAlgorithmId,
