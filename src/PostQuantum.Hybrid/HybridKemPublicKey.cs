@@ -50,7 +50,7 @@ public sealed class HybridKemPublicKey
     {
         if (source.Length != AlgorithmSizes.HybridKemPublicKeyBytes)
         {
-            throw new PostQuantumHybridException(
+            throw new HybridKeyParseException(
                 HybridFailureReason.InvalidLength,
                 $"Invalid hybrid KEM public-key length: expected {AlgorithmSizes.HybridKemPublicKeyBytes}, got {source.Length}.");
         }
@@ -58,7 +58,7 @@ public sealed class HybridKemPublicKey
         var algorithm = (HybridKemAlgorithm)source[0];
         if (algorithm != HybridKemAlgorithm.X25519MlKem768)
         {
-            throw new PostQuantumHybridException(
+            throw new HybridKeyParseException(
                 HybridFailureReason.UnsupportedAlgorithmId,
                 $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }

@@ -72,12 +72,11 @@ public static class HybridKem
 
         // Post-quantum: ML-KEM-768 encapsulate.
         var pqCiphertext = new byte[AlgorithmSizes.MlKem768CiphertextBytes];
-        var pqSecret = new byte[AlgorithmSizes.MlKem768SharedSecretBytes];
-        MlKemBackend.Encapsulate(publicKey.PqKeySpan, pqCiphertext, pqSecret);
+        using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
+        MlKemBackend.Encapsulate(publicKey.PqKeySpan, pqCiphertext, pqSecret.Span);
 
-        var combined = KemCombiner.Combine(classicalSecret, pqSecret, classicalCiphertext, pqCiphertext);
+        var combined = KemCombiner.Combine(classicalSecret, pqSecret.ReadOnlySpan, classicalCiphertext, pqCiphertext);
         CryptographicOperations.ZeroMemory(classicalSecret);
-        CryptographicOperations.ZeroMemory(pqSecret);
 
         var ciphertext = new HybridKemCiphertext(publicKey.Algorithm, classicalCiphertext, pqCiphertext);
         return new HybridKemEncapsulationResult(ciphertext, combined);
@@ -91,7 +90,7 @@ public static class HybridKem
 
         if (privateKey.Algorithm != ciphertext.Algorithm)
         {
-            throw new PostQuantumHybridException(
+            throw new InvalidCiphertextException(
                 HybridFailureReason.AlgorithmMismatch,
                 $"Algorithm mismatch: private key is {privateKey.Algorithm}, ciphertext is {ciphertext.Algorithm}.");
         }
@@ -118,12 +117,11 @@ public static class HybridKem
         // Post-quantum: ML-KEM decapsulate. Implicit rejection means malformed
         // ciphertexts yield pseudorandom secrets; the combined secret will simply
         // differ from the sender's and downstream decryption will fail.
-        var pqSecret = new byte[AlgorithmSizes.MlKem768SharedSecretBytes];
-        MlKemBackend.Decapsulate(privateKey.PqKeySpan, ciphertext.PqSpan, pqSecret);
+        using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
+        MlKemBackend.Decapsulate(privateKey.PqKeySpan, ciphertext.PqSpan, pqSecret.Span);
 
-        var combined = KemCombiner.Combine(classicalSecret, pqSecret, ciphertext.ClassicalSpan, ciphertext.PqSpan);
+        var combined = KemCombiner.Combine(classicalSecret, pqSecret.ReadOnlySpan, ciphertext.ClassicalSpan, ciphertext.PqSpan);
         CryptographicOperations.ZeroMemory(classicalSecret);
-        CryptographicOperations.ZeroMemory(pqSecret);
         return combined;
     }
 

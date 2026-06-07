@@ -1,1 +1,7 @@
 #nullable enable
+PostQuantum.Hybrid.HybridKeyParseException
+PostQuantum.Hybrid.HybridKeyParseException.HybridKeyParseException(PostQuantum.Hybrid.HybridFailureReason reason, string! message) -> void
+PostQuantum.Hybrid.HybridKeyParseException.HybridKeyParseException(PostQuantum.Hybrid.HybridFailureReason reason, string! message, System.Exception! innerException) -> void
+PostQuantum.Hybrid.InvalidCiphertextException
+PostQuantum.Hybrid.InvalidCiphertextException.InvalidCiphertextException(PostQuantum.Hybrid.HybridFailureReason reason, string! message) -> void
+PostQuantum.Hybrid.InvalidCiphertextException.InvalidCiphertextException(PostQuantum.Hybrid.HybridFailureReason reason, string! message, System.Exception! innerException) -> void

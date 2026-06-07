@@ -50,7 +50,7 @@ public sealed class HybridSignaturePublicKey
     {
         if (source.Length != AlgorithmSizes.HybridSigPublicKeyBytes)
         {
-            throw new PostQuantumHybridException(
+            throw new HybridKeyParseException(
                 HybridFailureReason.InvalidLength,
                 $"Invalid hybrid signature public-key length: expected {AlgorithmSizes.HybridSigPublicKeyBytes}, got {source.Length}.");
         }
@@ -58,7 +58,7 @@ public sealed class HybridSignaturePublicKey
         var algorithm = (HybridSignatureAlgorithm)source[0];
         if (algorithm != HybridSignatureAlgorithm.Ed25519MlDsa65)
         {
-            throw new PostQuantumHybridException(
+            throw new HybridKeyParseException(
                 HybridFailureReason.UnsupportedAlgorithmId,
                 $"Unsupported hybrid signature algorithm id: {source[0]}.");
         }

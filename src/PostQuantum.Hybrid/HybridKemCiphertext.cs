@@ -45,7 +45,7 @@ public sealed class HybridKemCiphertext
     {
         if (source.Length != AlgorithmSizes.HybridKemCiphertextBytes)
         {
-            throw new PostQuantumHybridException(
+            throw new InvalidCiphertextException(
                 HybridFailureReason.InvalidLength,
                 $"Invalid hybrid KEM ciphertext length: expected {AlgorithmSizes.HybridKemCiphertextBytes}, got {source.Length}.");
         }
@@ -53,7 +53,7 @@ public sealed class HybridKemCiphertext
         var algorithm = (HybridKemAlgorithm)source[0];
         if (algorithm != HybridKemAlgorithm.X25519MlKem768)
         {
-            throw new PostQuantumHybridException(
+            throw new InvalidCiphertextException(
                 HybridFailureReason.UnsupportedAlgorithmId,
                 $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }
