@@ -22,24 +22,29 @@ publicly.
 **Plan:** Switch to native implementations on whatever .NET version first
 exposes them. The public API does not need to change.
 
-### No NIST KAT (Known Answer Test) vectors
+### Embedded regression vectors ship; published NIST .rsp vectors do not
 
-**State:** The test suite does not include the NIST FIPS-203/204 KAT
-files (they are multi-megabyte and out of scope to embed in v1). The
-library implicitly cross-validates BouncyCastle vs. native by running
-the same xUnit test suite on both `net8.0` (BC backend) and `net10.0`
-(native backend) — wire-format drift between backends would surface as
-test failures. We also relied on direct cross-backend interop probes
-during development (both halves on the same TFM, four-direction
-sign/verify and encap/decap), which all passed.
+**State:** `NistKatTests` ships three seed-based regression vectors per
+algorithm (ML-KEM-768 and ML-DSA-65). Each vector pins the SHA-256 of
+both the derived public key and the derived private key. On `net10.0`
+the same seeds are additionally fed through the native
+`System.Security.Cryptography.MLKem` / `MLDsa` paths (when the OS
+exposes them) and the resulting public keys are asserted bit-equal
+between backends. The shipped vectors are derived from BouncyCastle's
+deterministic `FromSeed` — they are NOT the published NIST .rsp KAT
+files, which remain workflow-fetched only when `vars.NIST_KAT_MIRROR`
+is configured (see `.github/workflows/nist-kats.yml`).
 
 **Impact:** A hypothetical situation where BOTH the BCL ML-KEM/ML-DSA
 implementation AND BouncyCastle's deviate from FIPS-203/204 in the
-*same way* would not be caught by our tests.
+*same way* would still not be caught — the cross-check defends against
+inter-backend divergence, not against a shared deviation from the
+standard.
 
-**Plan:** Embed a small set of NIST KAT vectors directly so each
-backend is independently validated against the published standard.
-(v1.1.)
+**Plan:** Add a runner that parses NIST's `.rsp` format and validates
+both backends against the published vectors when the mirror env var is
+set. Until then, the in-repo regression vectors catch drift within a
+single backend and divergence between backends.
 
 ### No formal proof of the combiner
 

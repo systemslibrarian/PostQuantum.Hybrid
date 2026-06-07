@@ -26,11 +26,11 @@ jobs:
           dotnet restore PostQuantum.Hybrid.slnx
           dotnet build PostQuantum.Hybrid.slnx --configuration Release --no-restore
 
-      - name: Run the in-repo deterministic key-generation regression
+      - name: Run the in-repo KAT regression vectors
         run: |
           dotnet test tests/PostQuantum.Hybrid.Tests \
             --configuration Release --no-build \
-            --filter "FullyQualifiedName~DeterministicKeyGenerationTests" \
+            --filter "FullyQualifiedName~DeterministicKeyGenerationTests|FullyQualifiedName~NistKatTests" \
             --logger "console;verbosity=detailed"
 
       # The following step is gated on a real NIST KAT mirror being

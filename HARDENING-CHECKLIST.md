@@ -1,105 +1,180 @@
-# Hardening Checklist
+# Production Hardening Checklist
 
-A practical, opinionated checklist for deploying applications that use
-PostQuantum.Hybrid in production. Tick each box before you ship.
+This is a release gate for production systems that use PostQuantum.Hybrid.
+Treat every unchecked box as a ship blocker unless it is explicitly marked as
+recommended.
 
-## Key management
+An item is not complete until you can point to all three:
 
-- [ ] **Private keys are never logged.** Search your code for any log/trace/
-      telemetry path that touches a `HybridKemPrivateKey` /
-      `HybridSignaturePrivateKey` instance, including its `.Export()` /
-      `.ExportPem()` output. None should exist.
-- [ ] **Private keys are never serialized into application telemetry,
-      crash dumps, or error responses.**
-- [ ] **Private keys are stored encrypted at rest** (KMS, HSM, sealed-box
-      file, OS keystore) — not as plaintext `.pem` files in a repo or
-      container image.
-- [ ] **Private keys have a defined rotation cadence** (recommended:
-      1–2 years for long-lived static keys; per-session for ephemeral keys).
-- [ ] **Every code path that allocates a private-key type disposes it.**
-      Use `using` declarations or `try/finally`. Static analysis can help.
-- [ ] **Backups of private-key material exist and have been test-restored.**
-      Losing the only copy of a long-lived signing key is a separate disaster
-      from leaking it.
+- the code or configuration that implements the control,
+- the test or CI job that exercises it,
+- the runbook, owner, or operational process that keeps it true over time.
 
-## KEM usage
+If you cannot name the evidence, leave the box unchecked.
 
-- [ ] **The KEM shared secret is never used directly as plaintext or as a
-      raw MAC key.** Feed it through HKDF or AEAD.
-- [ ] **An AEAD (AES-GCM, ChaCha20-Poly1305) wraps the message payload.**
-      The KEM is for the key, not the message.
-- [ ] **The KEM ciphertext is bound into the AEAD as `associatedData`.**
-      See `samples/SecureMessenger` for the pattern.
-- [ ] **A fresh KEM ciphertext (and therefore fresh AEAD key) is generated
-      per message.** Do not reuse a single KEM exchange across many AEAD
-      encryptions without a session-level KDF chain.
-- [ ] **The 32-byte shared secret is zeroed after use** (`CryptographicOperations.ZeroMemory`).
-      The library does this internally; if you propagate the secret out,
-      manage it yourself.
+## Safe surface selection
 
-## Signature usage
+- [ ] **If the application only needs sealed/opened envelopes, it uses
+      `PostQuantum.Hybrid.Envelopes` instead of custom KEM + HKDF + AEAD
+      glue.** Prefer `HybridEnvelope` / `SignedHybridEnvelope` unless you
+      have a documented protocol reason not to.
+- [ ] **If the application is ASP.NET Core and loads long-lived keys at
+      startup, key loading is centralized through
+      `AddPostQuantumHybrid(...)` or an equivalent single abstraction.** Do
+      not scatter PEM loading and private-key import across controllers,
+      middleware, and background jobs.
+- [ ] **`PostQuantum.Hybrid.Analyzers` is installed in every project that
+      touches hybrid keys, ciphertexts, signatures, or shared secrets.**
+- [ ] **`PQH001` through `PQH005` are treated as build-breaking in CI.**
+      Security warnings that can be ignored are not controls.
+- [ ] **Every suppression of `PQH001` through `PQH005` has a written
+      justification, an owner, and review history.**
 
-- [ ] **Signatures are verified in constant-time-safe code paths.** The
-      library's `Verify` is constant-time at the cryptographic layer; just
-      don't add early `return` based on partial signature inspection.
-- [ ] **Verification runs BEFORE any other processing of the payload.**
-      Never parse, deserialize, decrypt, or otherwise act on a signed
-      payload until `HybridSignature.Verify` returns true.
-- [ ] **Verification failures are logged at coarse granularity only.** Log
-      "signature mismatch for key X" — not the signature bytes, not the
-      payload, not the public key body.
-- [ ] **Replay protection exists at the protocol layer** (nonce, timestamp,
-      sequence number — whatever fits). The library does not provide it.
+## Key lifecycle and secret handling
 
-## Integrity of artifacts in transit/at rest
+- [ ] **Private keys never appear in logs, traces, telemetry, metrics labels,
+      crash dumps, support bundles, or error responses.** This includes any
+      `.Export()` / `.ExportPem()` output.
+- [ ] **Private keys are never committed to source control or baked into
+      container images, deployment manifests, IaC templates, or CI
+      artifacts.**
+- [ ] **Private keys are stored encrypted at rest** (KMS, HSM, OS keystore,
+      secret-managed file, or equivalent), with access controls and audit
+      logging.
+- [ ] **The identities allowed to read decapsulation keys or signing keys are
+      least-privilege and auditable.**
+- [ ] **The public-key distribution path is authenticated.** Callers do not
+      blindly trust the first PEM or byte blob they receive.
+- [ ] **Every code path that allocates `HybridKemKeyPair`,
+      `HybridKemPrivateKey`, `HybridSignatureKeyPair`,
+      `HybridSignaturePrivateKey`, or `HybridKemEncapsulationResult`
+      disposes it deterministically.** Use `using` or an equivalent explicit
+      lifecycle.
+- [ ] **Backups of long-lived private-key material exist, are encrypted, and
+      have been test-restored.** "We have backups" is not enough.
+- [ ] **A documented rotation cadence exists for long-lived keys, plus an
+      emergency rotation playbook.**
+- [ ] **Rotation includes a safe rollout plan for public-key consumers,
+      overlapping trust windows where needed, and a way to revoke old
+      keys.**
 
-- [ ] **Stored hybrid blobs are length-validated on load.** The library
-      length-checks on `Import`/`FromBytes`; if your code reads bytes from
-      disk/network and only later passes them to `Import`, ensure the read
-      itself bounds the size.
-- [ ] **Algorithm-id is treated as part of the keyed material.** Don't
-      strip the first byte for "compactness"; it's the only thing
-      preventing cross-algorithm confusion.
+## Protocol construction
 
-## Dependency hygiene
+- [ ] **The KEM shared secret is treated only as keying material.** It is
+      never used directly as plaintext, an AEAD key, or a MAC key.
+- [ ] **HKDF is used before any symmetric primitive, with an
+      application-specific `info` string that includes protocol/app identity
+      and purpose.**
+- [ ] **An AEAD (AES-GCM, ChaCha20-Poly1305, or equivalent) protects the
+      payload.** The KEM is for key agreement, not bulk encryption.
+- [ ] **The hybrid KEM ciphertext is bound into AEAD `associatedData`.**
+- [ ] **A fresh KEM ciphertext and fresh derived AEAD key are used per
+      message, unless a documented session protocol replaces this with a
+      ratchet or KDF chain.**
+- [ ] **In signed-and-encrypted flows, verification happens before
+      decapsulation or decryption.** Prefer `SignedHybridEnvelope.Open(...)`
+      when it fits.
+- [ ] **Replay and freshness protection exists at the protocol layer.** The
+      library does not provide it.
+- [ ] **The system treats AEAD authentication failure as the signal that a
+      malformed or tampered KEM ciphertext did not authenticate.** It does
+      not assume that "decapsulation returned bytes" means success.
+- [ ] **The algorithm-id byte is preserved end-to-end and validated on every
+      import.** It is never stripped for compactness or re-packed into an ad
+      hoc format.
+- [ ] **Any custom wire format or envelope format is versioned and
+      documented.** Future algorithm-id changes must be introducible without
+      ambiguity.
 
-- [ ] **`BouncyCastle.Cryptography` is pinned to a version
-      `>= 2.6.2`.** Older versions had different PQ APIs and have known
-      issues fixed in newer releases.
-- [ ] **Dependabot / Renovate is monitoring the BouncyCastle version.**
-- [ ] **CI runs `dotnet list package --vulnerable`** on every build.
+## Input validation and negative testing
 
-## Runtime / platform
+- [ ] **Untrusted hybrid blobs are size-bounded before buffering or
+      parsing.** Reject obviously oversized payloads before handing them to
+      `Import(...)`, `FromBytes(...)`, or PEM parsing.
+- [ ] **Code paths that ingest raw bytes or PEM accept only the exact
+      artifact types they expect.**
+- [ ] **Integration tests prove that tampered ciphertexts fail
+      authentication.**
+- [ ] **Integration tests prove that tampered signatures fail
+      verification.**
+- [ ] **Integration tests prove that wrong-key opens or decapsulations do not
+      silently succeed.**
+- [ ] **Integration tests prove that wrong algorithm-id and wrong length
+      inputs are rejected.**
+- [ ] **If artifacts cross process, service, or language boundaries,
+      interoperability tests cover the exact raw and PEM formats you ship.**
+- [ ] **Failure-path tests assert coarse logging only.** No payload bytes,
+      no ciphertext bodies, no signatures, no private-key material.
 
-- [ ] **The .NET 10 runtime is installed where the application runs.**
-      The `MLKem.IsSupported` probe will tell you at startup; surface this
-      as a clean error rather than crashing on first KEM use.
-- [ ] **On Linux, the OpenSSL stack is recent enough for native ML-KEM/ML-DSA
-      to work.** OpenSSL 3.5+ is the rough cutoff (varies by .NET runtime
-      build). The library falls back to BouncyCastle automatically on net8.0
-      but **not** on net10.0 — there, missing native PQ throws
-      `PlatformNotSupportedException`.
-- [ ] **Process memory protection** (DEP, ASLR, swap-off for crypto pages
-      where supported) follows your platform's general hardening guide.
+## Runtime and platform
 
-## Operational
+- [ ] **Operators know which backend each environment uses.** On .NET 10 the
+      library prefers native `MLKem` / `MLDsa` when supported and otherwise
+      falls back to BouncyCastle; on .NET 8 it uses BouncyCastle.
+- [ ] **If policy, certification, or performance requires the native .NET 10
+      PQ backend, startup explicitly probes
+      `System.Security.Cryptography.MLKem.IsSupported` and
+      `System.Security.Cryptography.MLDsa.IsSupported` and fails closed when
+      they are false.**
+- [ ] **Readiness checks exercise the real crypto path with canary keys or a
+      startup smoke test:** key load or import, sign and verify, and
+      encapsulate and open/decapsulate.
+- [ ] **Crash-dump, swap, paging, and telemetry policies reduce secret
+      exposure on the host.**
+- [ ] **The host OS and runtime receive security updates on an enforced
+      cadence.** "We will patch later" is not a control.
+- [ ] **Platform hardening follows the normal host baseline:** least
+      privilege, ASLR/DEP, restricted debug access, locked-down secret files,
+      and audited administrator access.
 
-- [ ] **The application has a "PQ readiness" health check** that
-      exercises `HybridKem.GenerateKeyPair()` and `HybridSignature.GenerateKeyPair()`
-      at startup and reports failure clearly. A silent fallback to
-      classical-only is unacceptable.
-- [ ] **There is a documented incident-response procedure** for the case
-      where one of the four primitives is broken. The mitigation is a new
-      algorithm-id byte; have the rollout plan written down already.
-- [ ] **Monitoring includes counters for** sign success/failure,
-      verify success/failure, encap success/failure, decap success/failure
-      — labeled by algorithm identifier.
+## Build, CI, and supply chain
 
-## Documentation
+- [ ] **`BouncyCastle.Cryptography` is pinned to a reviewed version
+      `>= 2.6.2`, and dependency automation watches for updates and
+      advisories.**
+- [ ] **CI builds and tests every target framework and deployment shape the
+      application actually ships.**
+- [ ] **CI runs software composition analysis such as
+      `dotnet list package --vulnerable` or an equivalent scanner.**
+- [ ] **CI or release automation scans for accidentally committed secrets and
+      private-key material.**
+- [ ] **Release artifacts have a dependency inventory / SBOM or an equivalent
+      auditable package manifest.**
+- [ ] **Build output fails if `PQH001` through `PQH005` fire, unless a
+      reviewed suppression exists.**
 
-- [ ] **The system's documentation states which algorithms are in use**
-      (`X25519MlKem768` for KEM, `Ed25519MlDsa65` for signatures) so
-      operators can answer "are you post-quantum yet?" in plain language.
-- [ ] **The threat model the system inherits from PostQuantum.Hybrid**
-      (`docs/THREAT-MODEL.md`) is referenced or restated in the
-      system's own security documentation.
+## Operations, monitoring, and incident response
+
+- [ ] **Monitoring includes coarse counters for sign, verify, encapsulate,
+      decapsulate, envelope seal, and envelope open success and failure,**
+      labeled by algorithm and environment rather than by sensitive data.
+- [ ] **Alerts exist for spikes in authentication failures, key load/import
+      failures, readiness failures, and overdue key rotation.**
+- [ ] **There is a documented procedure for private-key compromise,**
+      including revocation, replacement, and downstream re-issuance of public
+      keys.
+- [ ] **There is a documented procedure for a break in one primitive,**
+      including algorithm-id migration, compatibility handling, and rollout
+      sequencing.
+- [ ] **Disaster-recovery drills include restoring keys, reloading them into
+      the app, and proving that old data still verifies or decrypts where
+      policy says it should.**
+- [ ] **Security documentation states the exact deployed algorithms**
+      (`X25519MlKem768`, `Ed25519MlDsa65`), the target frameworks, backend
+      expectations, and the replay and rotation assumptions the application
+      adds on top of the library.
+- [ ] **The application's security documentation references or restates the
+      library threat model in `docs/THREAT-MODEL.md`, the secure usage
+      guidance in `src/SECURE-USAGE.md`, and this checklist.**
+
+## Minimum evidence pack
+
+Before declaring this checklist complete, collect all of the following:
+
+- a CI run proving the negative tests above,
+- the analyzer configuration that makes `PQH001` to `PQH005`
+  build-breaking,
+- the secret-storage and key-rotation runbook,
+- the incident-response runbook for key compromise and primitive break,
+- the document that states which algorithms, formats, and deployment
+  backends the system uses.

@@ -35,7 +35,13 @@ public class ParserFuzzTests
         }
         catch (Exception ex)
         {
-            Assert.Contains(ex.GetType(), ExpectedExceptionTypes);
+            // Accept the listed types or any subclass thereof — typed
+            // subclasses of PostQuantumHybridException (e.g.
+            // HybridKeyParseException, InvalidCiphertextException) should
+            // pass cleanly without needing to be re-listed here.
+            Assert.True(
+                ExpectedExceptionTypes.Any(t => t.IsAssignableFrom(ex.GetType())),
+                $"Unexpected exception type {ex.GetType().FullName}: {ex.Message}");
         }
     }
 
