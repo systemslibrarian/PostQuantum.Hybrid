@@ -1,0 +1,21 @@
+{
+  "$schema": "./baseline.schema.json",
+  "comment": "Reference baseline (net8.0 / BouncyCastle backend). Same hardware as net10 baseline.",
+  "platform": {
+    "os": "windows",
+    "tfm": "net8.0",
+    "cpu": "Intel Core Ultra 7 256V"
+  },
+  "regressionThreshold": 0.25,
+  "benchmarks": [
+    { "method": "HybridKemBenchmarks.GenerateKeyPair", "meanNs":  590500, "allocatedBytes":  29942 },
+    { "method": "HybridKemBenchmarks.Encapsulate",     "meanNs":  977600, "allocatedBytes":  36546 },
+    { "method": "HybridKemBenchmarks.Decapsulate",     "meanNs":  861300, "allocatedBytes":  40878 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=64]",      "meanNs": 4169000, "allocatedBytes": 655636 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=1024]",    "meanNs": 5027000, "allocatedBytes": 601180 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=65536]",   "meanNs": 5109000, "allocatedBytes": 794419 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=64]",    "meanNs": 1144000, "allocatedBytes": 193660 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=1024]",  "meanNs": 1234000, "allocatedBytes": 195379 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=65536]", "meanNs": 2729000, "allocatedBytes": 324352 }
+  ]
+}

@@ -27,5 +27,6 @@
   </Folder>
   <Folder Name="/fuzz/">
     <Project Path="fuzz/PostQuantum.Hybrid.Fuzz/PostQuantum.Hybrid.Fuzz.csproj" />
+    <Project Path="fuzz/PostQuantum.Hybrid.Fuzz.Sharp/PostQuantum.Hybrid.Fuzz.Sharp.csproj" />
   </Folder>
 </Solution>

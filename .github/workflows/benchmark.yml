@@ -48,3 +48,12 @@ jobs:
           name: benchmark-${{ matrix.tfm }}-${{ runner.os }}
           path: benchmarks/PostQuantum.Hybrid.Benchmarks/BenchmarkDotNet.Artifacts/results/*.json
           retention-days: 90
+
+      - name: Compare against baseline (linux only)
+        if: matrix.tfm == 'net10.0' && runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          pwsh tools/compare-benchmarks.ps1 `
+            -ResultsGlob 'benchmarks/PostQuantum.Hybrid.Benchmarks/BenchmarkDotNet.Artifacts/results/*-report-full.json' `
+            -Baseline 'benchmarks/baseline-net10.0-windows.json'
+        continue-on-error: true   # Linux numbers differ from the Windows baseline; flag without blocking until we add a per-OS baseline.

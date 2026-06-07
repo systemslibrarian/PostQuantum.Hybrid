@@ -1,0 +1,22 @@
+{
+  "$schema": "./baseline.schema.json",
+  "comment": "Reference baseline for benchmark regression detection. Generated from a clean BenchmarkDotNet run on Windows 11 + Intel Core Ultra 7 256V @ 2.20 GHz. Update this file when the hardware tier or the library's measured performance shifts intentionally; PRs that worsen Mean by more than RegressionThreshold (default 25%) should fail the bench job.",
+  "platform": {
+    "os": "windows",
+    "tfm": "net10.0",
+    "cpu": "Intel Core Ultra 7 256V"
+  },
+  "regressionThreshold": 0.25,
+  "benchmarks": [
+    { "method": "HybridKemBenchmarks.GenerateKeyPair", "meanNs": 277000, "allocatedBytes": 6461 },
+    { "method": "HybridKemBenchmarks.Encapsulate",     "meanNs": 503000, "allocatedBytes": 6318 },
+    { "method": "HybridKemBenchmarks.Decapsulate",     "meanNs": 322000, "allocatedBytes": 3207 },
+    { "method": "HybridSignatureKeyGenBenchmark.GenerateKeyPair", "meanNs": 1803000, "allocatedBytes": 9758 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=64]",      "meanNs": 1628800, "allocatedBytes": 11633 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=1024]",    "meanNs": 1701500, "allocatedBytes": 13363 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=65536]",   "meanNs": 3234500, "allocatedBytes": 142428 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=64]",    "meanNs":  583200, "allocatedBytes":  7300 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=1024]",  "meanNs":  581900, "allocatedBytes":  9031 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=65536]", "meanNs": 1560800, "allocatedBytes": 138056 }
+  ]
+}

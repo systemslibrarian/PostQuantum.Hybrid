@@ -13,5 +13,8 @@ options considered, what we picked, and why.
 | [0006](0006-backend-abstraction.md) | Backend abstraction for ML-KEM and ML-DSA |
 | [0007](0007-versioned-wire-format.md) | Versioned wire format with algorithm-id byte |
 | [0008](0008-bouncycastle-only-dependency.md) | Single optional dependency: BouncyCastle |
+| [0009](0009-envelopes-package.md) | `PostQuantum.Hybrid.Envelopes` as a separate package |
+| [0010](0010-aspnetcore-key-rotation.md) | AspNetCore key rotation via `FileSystemWatcher` |
+| [0011](0011-typed-exception-taxonomy.md) | Typed `PostQuantumHybridException` with `HybridFailureReason` enum |
 
 Status legend: **Accepted** • **Superseded** • **Deprecated**
