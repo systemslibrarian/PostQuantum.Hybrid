@@ -1,0 +1,59 @@
+{
+  "name": "postquantum-hybrid-snippets",
+  "displayName": "PostQuantum.Hybrid Snippets",
+  "description": "Analyzer-clean C# snippets for PostQuantum.Hybrid, Envelopes, and AspNetCore secure patterns.",
+  "version": "1.1.0",
+  "publisher": "systemslibrarian",
+  "license": "MIT",
+  "icon": "vsc-icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Snippets",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "csharp",
+    "dotnet",
+    "cryptography",
+    "post-quantum",
+    "pqc",
+    "hybrid",
+    "ml-kem",
+    "ml-dsa",
+    "aspnetcore",
+    "envelopes",
+    "security",
+    "snippets"
+  ],
+  "author": {
+    "name": "systemslibrarian"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/systemslibrarian/PostQuantum.Hybrid",
+    "directory": "vscode-extension"
+  },
+  "homepage": "https://github.com/systemslibrarian/PostQuantum.Hybrid/tree/main/vscode-extension#readme",
+  "bugs": {
+    "url": "https://github.com/systemslibrarian/PostQuantum.Hybrid/issues"
+  },
+  "pricing": "Free",
+  "qna": "https://github.com/systemslibrarian/PostQuantum.Hybrid/discussions",
+  "scripts": {
+    "package": "npx @vscode/vsce package"
+  },
+  "contributes": {
+    "snippets": [
+      {
+        "language": "csharp",
+        "path": "./snippets/csharp.json"
+      }
+    ]
+  }
+}

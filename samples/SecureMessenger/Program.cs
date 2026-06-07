@@ -92,38 +92,43 @@ static byte[] AliceSendsToBob(
     using var encapsulation = HybridKem.Encapsulate(bobPublicKey);
     var kemCt = encapsulation.Ciphertext.ToBytes();
     var aesKey = DeriveAesKey(encapsulation.Secret, kemCt);
-
-    var nonce = RandomNumberGenerator.GetBytes(NonceSize);
-    var ciphertext = new byte[plaintext.Length];
-    var tag = new byte[TagSize];
-    using (var aes = new AesGcm(aesKey, TagSize))
+    try
     {
-        // Bind kemCt into the AEAD as associatedData. PQH005 enforces
-        // this for any AesGcm call inside a method that uses HybridKem.
-        aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
+        var nonce = RandomNumberGenerator.GetBytes(NonceSize);
+        var ciphertext = new byte[plaintext.Length];
+        var tag = new byte[TagSize];
+        using (var aes = new AesGcm(aesKey, TagSize))
+        {
+            // Bind kemCt into the AEAD as associatedData. PQH005 enforces
+            // this for any AesGcm call inside a method that uses HybridKem.
+            aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
+        }
+
+        // Build the to-be-signed block: KEM_ct || nonce || AES_ct_len(LE u32) || AES_ct || tag.
+        // Note: we sign the *ciphertext*, not the plaintext. That means
+        // verify-before-decrypt is sufficient — Bob doesn't need to decrypt
+        // anything to learn whether Alice authored this packet.
+        var tbs = new byte[kemCt.Length + NonceSize + 4 + ciphertext.Length + TagSize];
+        var span = tbs.AsSpan();
+        var offset = 0;
+        kemCt.CopyTo(span[offset..]); offset += kemCt.Length;
+        nonce.CopyTo(span[offset..]); offset += NonceSize;
+        BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(offset, 4), (uint)ciphertext.Length); offset += 4;
+        ciphertext.CopyTo(span[offset..]); offset += ciphertext.Length;
+        tag.CopyTo(span[offset..]);
+
+        var signature = HybridSignature.Sign(alicePrivateKey, tbs);
+
+        // Wire format: tbs || signature.
+        var packet = new byte[tbs.Length + signature.Length];
+        tbs.CopyTo(packet, 0);
+        signature.CopyTo(packet, tbs.Length);
+        return packet;
     }
-    CryptographicOperations.ZeroMemory(aesKey);
-
-    // Build the to-be-signed block: KEM_ct || nonce || AES_ct_len(LE u32) || AES_ct || tag.
-    // Note: we sign the *ciphertext*, not the plaintext. That means
-    // verify-before-decrypt is sufficient — Bob doesn't need to decrypt
-    // anything to learn whether Alice authored this packet.
-    var tbs = new byte[kemCt.Length + NonceSize + 4 + ciphertext.Length + TagSize];
-    var span = tbs.AsSpan();
-    var offset = 0;
-    kemCt.CopyTo(span[offset..]); offset += kemCt.Length;
-    nonce.CopyTo(span[offset..]); offset += NonceSize;
-    BinaryPrimitives.WriteUInt32LittleEndian(span.Slice(offset, 4), (uint)ciphertext.Length); offset += 4;
-    ciphertext.CopyTo(span[offset..]); offset += ciphertext.Length;
-    tag.CopyTo(span[offset..]);
-
-    var signature = HybridSignature.Sign(alicePrivateKey, tbs);
-
-    // Wire format: tbs || signature.
-    var packet = new byte[tbs.Length + signature.Length];
-    tbs.CopyTo(packet, 0);
-    signature.CopyTo(packet, tbs.Length);
-    return packet;
+    finally
+    {
+        CryptographicOperations.ZeroMemory(aesKey);
+    }
 }
 
 static byte[] BobReceivesFromAlice(
@@ -163,16 +168,27 @@ static byte[] BobReceivesFromAlice(
     {
         throw new CryptographicException("Hybrid KEM decapsulation failed after a valid signature — input is malformed.");
     }
-    var aesKey = DeriveAesKey(sharedSecret, kemCt);
-    CryptographicOperations.ZeroMemory(sharedSecret);
-
-    var plaintext = new byte[aesCtLen];
-    using (var aes = new AesGcm(aesKey, TagSize))
+    try
     {
-        aes.Decrypt(nonce, aesCt, tag, plaintext, associatedData: kemCt);
+        var aesKey = DeriveAesKey(sharedSecret, kemCt);
+        try
+        {
+            var plaintext = new byte[aesCtLen];
+            using (var aes = new AesGcm(aesKey, TagSize))
+            {
+                aes.Decrypt(nonce, aesCt, tag, plaintext, associatedData: kemCt);
+            }
+            return plaintext;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(aesKey);
+        }
     }
-    CryptographicOperations.ZeroMemory(aesKey);
-    return plaintext;
+    finally
+    {
+        CryptographicOperations.ZeroMemory(sharedSecret);
+    }
 }
 
 static byte[] DeriveAesKey(ReadOnlySpan<byte> sharedSecret, ReadOnlySpan<byte> kemCiphertext)

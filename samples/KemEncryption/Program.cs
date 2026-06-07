@@ -80,29 +80,33 @@ static byte[] EncryptToRecipient(HybridKemPublicKey recipientPublicKey, ReadOnly
     // wrapper discourages the "just hand it to AesGcm" misuse that
     // PQH002 would flag.
     var aesKey = DeriveAesKey(encapsulation.Secret);
-
-    var nonce = RandomNumberGenerator.GetBytes(NonceSize);
-    var ciphertext = new byte[plaintext.Length];
-    var tag = new byte[TagSize];
-
-    using (var aes = new AesGcm(aesKey, TagSize))
+    try
     {
-        // Bind the KEM ciphertext into associatedData. If an attacker
-        // ever swaps in a different KEM ct, the AEAD tag will not
-        // verify under the resulting (different) key derivation. The
-        // PQH005 analyzer enforces this binding.
-        aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
+        var nonce = RandomNumberGenerator.GetBytes(NonceSize);
+        var ciphertext = new byte[plaintext.Length];
+        var tag = new byte[TagSize];
+
+        using (var aes = new AesGcm(aesKey, TagSize))
+        {
+            // Bind the KEM ciphertext into associatedData. If an attacker
+            // ever swaps in a different KEM ct, the AEAD tag will not
+            // verify under the resulting (different) key derivation. The
+            // PQH005 analyzer enforces this binding.
+            aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
+        }
+
+        var envelope = new byte[kemCt.Length + NonceSize + TagSize + ciphertext.Length];
+        var offset = 0;
+        kemCt.CopyTo(envelope.AsSpan(offset));      offset += kemCt.Length;
+        nonce.CopyTo(envelope.AsSpan(offset));      offset += NonceSize;
+        tag.CopyTo(envelope.AsSpan(offset));        offset += TagSize;
+        ciphertext.CopyTo(envelope.AsSpan(offset));
+        return envelope;
     }
-
-    var envelope = new byte[kemCt.Length + NonceSize + TagSize + ciphertext.Length];
-    var offset = 0;
-    kemCt.CopyTo(envelope.AsSpan(offset));      offset += kemCt.Length;
-    nonce.CopyTo(envelope.AsSpan(offset));      offset += NonceSize;
-    tag.CopyTo(envelope.AsSpan(offset));        offset += TagSize;
-    ciphertext.CopyTo(envelope.AsSpan(offset));
-
-    CryptographicOperations.ZeroMemory(aesKey);
-    return envelope;
+    finally
+    {
+        CryptographicOperations.ZeroMemory(aesKey);
+    }
 }
 
 static byte[] DecryptFromSender(HybridKemPrivateKey recipientPrivateKey, ReadOnlySpan<byte> envelope)
@@ -128,16 +132,27 @@ static byte[] DecryptFromSender(HybridKemPrivateKey recipientPrivateKey, ReadOnl
         throw new CryptographicException("Hybrid KEM decapsulation rejected the envelope.");
     }
 
-    var aesKey = DeriveAesKey(sharedSecret);
-    CryptographicOperations.ZeroMemory(sharedSecret);
-
-    var plaintext = new byte[ciphertext.Length];
-    using (var aes = new AesGcm(aesKey, TagSize))
+    try
     {
-        aes.Decrypt(nonce, ciphertext, tag, plaintext, associatedData: kemCt);
+        var aesKey = DeriveAesKey(sharedSecret);
+        try
+        {
+            var plaintext = new byte[ciphertext.Length];
+            using (var aes = new AesGcm(aesKey, TagSize))
+            {
+                aes.Decrypt(nonce, ciphertext, tag, plaintext, associatedData: kemCt);
+            }
+            return plaintext;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(aesKey);
+        }
     }
-    CryptographicOperations.ZeroMemory(aesKey);
-    return plaintext;
+    finally
+    {
+        CryptographicOperations.ZeroMemory(sharedSecret);
+    }
 }
 
 static byte[] DeriveAesKey(ReadOnlySpan<byte> sharedSecret)

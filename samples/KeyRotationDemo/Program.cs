@@ -246,11 +246,11 @@ sealed class SimulatedSidecarService : Microsoft.Extensions.Hosting.BackgroundSe
         var tmpPriv = privateKeyPath + ".tmp";
         File.WriteAllText(tmpPub, pair.PublicKey.ExportPem());
         File.WriteAllText(tmpPriv, pair.PrivateKey.ExportPem());
-        File.Move(tmpPub, publicKeyPath, overwrite: true);
         File.Move(tmpPriv, privateKeyPath, overwrite: true);
         if (!OperatingSystem.IsWindows())
         {
             File.SetUnixFileMode(privateKeyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
+        File.Move(tmpPub, publicKeyPath, overwrite: true);
     }
 }

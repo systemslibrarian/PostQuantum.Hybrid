@@ -16,24 +16,28 @@ static void KemDemo()
     // Alice generates a hybrid KEM key pair and publishes her public key.
     using var alice = HybridKem.GenerateKeyPair();
     Console.WriteLine($"Alice public key:  {alice.PublicKey.Export().Length,5} bytes");
-    Console.WriteLine($"Alice private key: {alice.PrivateKey.Export().Length,5} bytes");
+    Console.WriteLine("Alice private key: generated and held only in-memory");
 
     // Bob encapsulates a shared secret against Alice's public key.
     // The `using` zeroes the secret buffer on scope exit.
     using var encapsulation = HybridKem.Encapsulate(alice.PublicKey);
     Console.WriteLine($"Ciphertext:        {encapsulation.Ciphertext.ToBytes().Length,5} bytes");
-    Console.WriteLine($"Bob's shared:      {Hex(encapsulation.Secret.AsSpan())}");
 
     // Alice decapsulates to recover the same shared secret.
     var aliceSecret = HybridKem.Decapsulate(alice.PrivateKey, encapsulation.Ciphertext);
-    Console.WriteLine($"Alice's shared:    {Hex(aliceSecret)}");
+    try
+    {
+        Console.WriteLine($"Shared secret:     {aliceSecret.Length,5} bytes (not printed)");
 
-    // Always compare secrets in constant time. The typed wrapper
-    // implicit-converts to ReadOnlySpan<byte>, so it slots straight in.
-    Console.WriteLine($"Match: {CryptographicOperations.FixedTimeEquals(encapsulation.Secret.AsSpan(), aliceSecret)}");
-
-    // Zero the recovered secret once we're done with it.
-    CryptographicOperations.ZeroMemory(aliceSecret);
+        // Always compare secrets in constant time. The typed wrapper
+        // implicit-converts to ReadOnlySpan<byte>, so it slots straight in.
+        Console.WriteLine($"Match: {CryptographicOperations.FixedTimeEquals(encapsulation.Secret.AsSpan(), aliceSecret)}");
+    }
+    finally
+    {
+        // Zero the recovered secret once we're done with it.
+        CryptographicOperations.ZeroMemory(aliceSecret);
+    }
 }
 
 static void SignatureDemo()
@@ -42,7 +46,7 @@ static void SignatureDemo()
 
     using var signer = HybridSignature.GenerateKeyPair();
     Console.WriteLine($"Public key:  {signer.PublicKey.Export().Length,5} bytes");
-    Console.WriteLine($"Private key: {signer.PrivateKey.Export().Length,5} bytes");
+    Console.WriteLine("Private key: generated and held only in-memory");
 
     var message = Encoding.UTF8.GetBytes("Hello, post-quantum world!");
     var signature = HybridSignature.Sign(signer.PrivateKey, message);
@@ -60,14 +64,4 @@ static void SignatureDemo()
     Console.WriteLine();
     Console.WriteLine("Public key (PEM):");
     Console.Write(pubPem);
-}
-
-static string Hex(ReadOnlySpan<byte> bytes)
-{
-    var sb = new StringBuilder(bytes.Length * 2);
-    foreach (var b in bytes)
-    {
-        sb.Append(b.ToString("x2"));
-    }
-    return sb.ToString();
 }

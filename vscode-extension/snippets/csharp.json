@@ -1,0 +1,342 @@
+{
+  "Hybrid KEM round-trip": {
+    "prefix": "pqh-kem",
+    "scope": "csharp",
+    "description": "Generate a hybrid KEM key pair, encapsulate, decapsulate. The disposables get `using` declarations so buffers are zeroed (PQH001).",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "",
+      "using var ${1:recipient} = HybridKem.GenerateKeyPair();",
+      "using var ${2:encapsulation} = HybridKem.Encapsulate(${1:recipient}.PublicKey);",
+      "var ${3:ciphertextBytes} = ${2:encapsulation}.Ciphertext.ToBytes();",
+      "",
+      "// Pass ${3:ciphertextBytes} to the recipient over the wire.",
+      "// The recipient recovers the same 32-byte secret with:",
+      "var ${4:recoveredSecret} = HybridKem.Decapsulate(${1:recipient}.PrivateKey, ${3:ciphertextBytes});",
+      "try",
+      "{",
+      "    $0",
+      "}",
+      "finally",
+      "{",
+      "    CryptographicOperations.ZeroMemory(${4:recoveredSecret});",
+      "}"
+    ]
+  },
+
+  "Hybrid signature round-trip": {
+    "prefix": "pqh-sig",
+    "scope": "csharp",
+    "description": "Generate a signing key pair, sign, verify. The result of HybridSignature.Verify is captured and branched on (PQH004).",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using System.Security.Cryptography;",
+      "",
+      "using var ${1:signer} = HybridSignature.GenerateKeyPair();",
+      "var ${2:message} = ${3:System.Text.Encoding.UTF8.GetBytes(\"hello\")};",
+      "var ${4:signature} = HybridSignature.Sign(${1:signer}.PrivateKey, ${2:message});",
+      "",
+      "if (!HybridSignature.Verify(${1:signer}.PublicKey, ${2:message}, ${4:signature}))",
+      "{",
+      "    throw new CryptographicException(\"Signature verification failed.\");",
+      "}",
+      "$0"
+    ]
+  },
+
+  "Anonymous envelope (recommended start)": {
+    "prefix": "pqh-envelope",
+    "scope": "csharp",
+    "description": "Recommended starting point: seal and open an anonymous envelope with PostQuantum.Hybrid.Envelopes instead of hand-rolling KEM + HKDF + AEAD.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using PostQuantum.Hybrid.Envelopes;",
+      "using System.Text;",
+      "",
+      "using var ${1:recipient} = HybridKem.GenerateKeyPair();",
+      "var ${2:plaintext} = Encoding.UTF8.GetBytes(\"${3:secret message}\");",
+      "var ${4:envelope} = HybridEnvelope.Seal(${1:recipient}.PublicKey, ${2:plaintext});",
+      "var ${5:recovered} = HybridEnvelope.Open(${1:recipient}.PrivateKey, ${4:envelope});",
+      "$0"
+    ]
+  },
+
+  "Signed envelope (recommended authenticated confidentiality)": {
+    "prefix": "pqh-envelope-signed",
+    "scope": "csharp",
+    "description": "Recommended authenticated confidentiality pattern: SignedHybridEnvelope.Seal/Open with verify-before-decapsulate ordering baked in.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using PostQuantum.Hybrid.Envelopes;",
+      "using System.Text;",
+      "",
+      "using var ${1:sender} = HybridSignature.GenerateKeyPair();",
+      "using var ${2:recipient} = HybridKem.GenerateKeyPair();",
+      "var ${3:plaintext} = Encoding.UTF8.GetBytes(\"${4:confidential message}\");",
+      "var ${5:envelope} = SignedHybridEnvelope.Seal(${1:sender}.PrivateKey, ${2:recipient}.PublicKey, ${3:plaintext});",
+      "var ${6:recovered} = SignedHybridEnvelope.Open(${1:sender}.PublicKey, ${2:recipient}.PrivateKey, ${5:envelope});",
+      "$0"
+    ]
+  },
+
+  "KEM → HKDF → AES-GCM encrypt": {
+    "prefix": "pqh-kem-encrypt",
+    "scope": "csharp",
+    "description": "Canonical AEAD encryption keyed from a hybrid KEM. Uses encapsulation.Secret (typed wrapper) for HKDF; binds the KEM ciphertext into associatedData (PQH005); zeroes the derived AES key on scope exit.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using System.Security.Cryptography;",
+      "using System.Text;",
+      "",
+      "using var ${1:encapsulation} = HybridKem.Encapsulate(${2:recipientPublicKey});",
+      "var ${3:kemCt} = ${1:encapsulation}.Ciphertext.ToBytes();",
+      "",
+      "// HKDF.Expand with a purpose-specific info parameter (PQH002).",
+      "var ${4:aesKey} = new byte[32];",
+      "try",
+      "{",
+      "    HKDF.Expand(",
+      "        HashAlgorithmName.SHA256,",
+      "        ${1:encapsulation}.Secret,",
+      "        ${4:aesKey},",
+      "        info: Encoding.ASCII.GetBytes(\"${5:MyApp v1 AES-256-GCM key}\"));",
+      "",
+      "    var ${6:nonce} = RandomNumberGenerator.GetBytes(12);",
+      "    var ${7:ciphertext} = new byte[${8:plaintext}.Length];",
+      "    var ${9:tag} = new byte[16];",
+      "    using (var ${10:aes} = new AesGcm(${4:aesKey}, 16))",
+      "    {",
+      "        // Bind the KEM ciphertext into associatedData (PQH005).",
+      "        ${10:aes}.Encrypt(${6:nonce}, ${8:plaintext}, ${7:ciphertext}, ${9:tag}, associatedData: ${3:kemCt});",
+      "    }",
+      "    $0",
+      "}",
+      "finally",
+      "{",
+      "    CryptographicOperations.ZeroMemory(${4:aesKey});",
+      "}"
+    ]
+  },
+
+  "AES-GCM decrypt from KEM": {
+    "prefix": "pqh-kem-decrypt",
+    "scope": "csharp",
+    "description": "Counterpart to pqh-kem-encrypt. TryDecapsulate at the trust boundary, derive the same key, decrypt with the kemCt bound as associatedData.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using System.Security.Cryptography;",
+      "using System.Text;",
+      "",
+      "if (!HybridKem.TryDecapsulate(${1:recipientPrivateKey}, ${2:kemCt}, out var ${3:sharedSecret}))",
+      "{",
+      "    throw new CryptographicException(\"KEM decapsulation rejected the input.\");",
+      "}",
+      "try",
+      "{",
+      "    var ${4:aesKey} = new byte[32];",
+      "    try",
+      "    {",
+      "        HKDF.Expand(",
+      "            HashAlgorithmName.SHA256,",
+      "            ${3:sharedSecret},",
+      "            ${4:aesKey},",
+      "            info: Encoding.ASCII.GetBytes(\"${5:MyApp v1 AES-256-GCM key}\"));",
+      "",
+      "        var ${6:plaintext} = new byte[${7:ciphertext}.Length];",
+      "        using (var ${8:aes} = new AesGcm(${4:aesKey}, 16))",
+      "        {",
+      "            ${8:aes}.Decrypt(${9:nonce}, ${7:ciphertext}, ${10:tag}, ${6:plaintext}, associatedData: ${2:kemCt});",
+      "        }",
+      "        $0",
+      "    }",
+      "    finally",
+      "    {",
+      "        CryptographicOperations.ZeroMemory(${4:aesKey});",
+      "    }",
+      "}",
+      "finally",
+      "{",
+      "    CryptographicOperations.ZeroMemory(${3:sharedSecret});",
+      "}"
+    ]
+  },
+
+  "Sign-then-encrypt (PQH003 order)": {
+    "prefix": "pqh-signed-encrypted",
+    "scope": "csharp",
+    "description": "Receiver side: verify the signature BEFORE decapsulating (PQH003). Acting on unauthenticated input is what this analyzer is designed to catch.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using System.Security.Cryptography;",
+      "",
+      "// VERIFY first. Acting on unauthenticated input is the misuse",
+      "// pattern PQH003 catches at build time.",
+      "if (!HybridSignature.Verify(${1:senderSignaturePublicKey}, ${2:tbs}, ${3:signature}))",
+      "{",
+      "    throw new CryptographicException(\"Signature verification failed. Aborting.\");",
+      "}",
+      "",
+      "// Only NOW do we look at the KEM material.",
+      "if (!HybridKem.TryDecapsulate(${4:recipientPrivateKey}, ${5:kemCt}, out var ${6:sharedSecret}))",
+      "{",
+      "    throw new CryptographicException(\"KEM decapsulation rejected the input.\");",
+      "}",
+      "try",
+      "{",
+      "    // ... derive an AES key from ${6:sharedSecret} and decrypt ...",
+      "    $0",
+      "}",
+      "finally",
+      "{",
+      "    CryptographicOperations.ZeroMemory(${6:sharedSecret});",
+      "}"
+    ]
+  },
+
+  "Load hybrid keys from PEM (TryImportPem)": {
+    "prefix": "pqh-key-load",
+    "scope": "csharp",
+    "description": "Non-throwing PEM load at a trust boundary. TryImportPem returns false on malformed input rather than throwing.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using System.Security.Cryptography;",
+      "",
+      "if (!HybridKemPublicKey.TryImportPem(${1:pemFromDisk}, out var ${2:kemPub}))",
+      "{",
+      "    throw new CryptographicException(\"Hybrid KEM public PEM failed to parse.\");",
+      "}",
+      "if (!HybridKemPrivateKey.TryImportPem(${3:privPemFromDisk}, out var ${4:kemPriv}))",
+      "{",
+      "    throw new CryptographicException(\"Hybrid KEM private PEM failed to parse.\");",
+      "}",
+      "using (${4:kemPriv})",
+      "{",
+      "    $0",
+      "}"
+    ]
+  },
+
+  "Generate hybrid keys and save to PEM": {
+    "prefix": "pqh-key-save",
+    "scope": "csharp",
+    "description": "Generate a fresh hybrid KEM key pair and persist as PEM. Tightens Unix file permissions on the private key.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "",
+      "using (var ${1:pair} = HybridKem.GenerateKeyPair())",
+      "{",
+      "    System.IO.File.WriteAllText(${2:\"hybrid-kem.pub.pem\"}, ${1:pair}.PublicKey.ExportPem());",
+      "    System.IO.File.WriteAllText(${3:\"hybrid-kem.priv.pem\"}, ${1:pair}.PrivateKey.ExportPem());",
+      "    if (!OperatingSystem.IsWindows())",
+      "    {",
+      "        System.IO.File.SetUnixFileMode(${3:\"hybrid-kem.priv.pem\"}, System.IO.UnixFileMode.UserRead | System.IO.UnixFileMode.UserWrite);",
+      "    }",
+      "}",
+      "$0"
+    ]
+  },
+
+  "HKDF.Expand from HybridSharedSecret": {
+    "prefix": "pqh-hkdf",
+    "scope": "csharp",
+    "description": "Derive a purpose-specific key from a HybridSharedSecret using HKDF.Expand. The implicit ReadOnlySpan conversion means no ToArray boilerplate.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using System.Security.Cryptography;",
+      "using System.Text;",
+      "",
+      "var ${1:derivedKey} = new byte[${2:32}];",
+      "try",
+      "{",
+      "    HKDF.Expand(",
+      "        HashAlgorithmName.SHA256,",
+      "        ${3:hybridSharedSecret},",
+      "        ${1:derivedKey},",
+      "        info: Encoding.ASCII.GetBytes(\"${4:MyApp v1 purpose}\"));",
+      "    $0",
+      "}",
+      "finally",
+      "{",
+      "    CryptographicOperations.ZeroMemory(${1:derivedKey});",
+      "}"
+    ]
+  },
+
+  "AspNetCore: wire PostQuantum.Hybrid into DI": {
+    "prefix": "pqh-aspnet-di",
+    "scope": "csharp",
+    "description": "Bootstrap/demo pattern: generate keys eagerly, convert to PEM, dispose the bootstrap pairs, then call AddPostQuantumHybrid.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using PostQuantum.Hybrid.AspNetCore;",
+      "",
+      "string kemPubPem, kemPrivPem, sigPubPem, sigPrivPem;",
+      "using (var kem = HybridKem.GenerateKeyPair())",
+      "using (var sig = HybridSignature.GenerateKeyPair())",
+      "{",
+      "    kemPubPem  = kem.PublicKey.ExportPem();",
+      "    kemPrivPem = kem.PrivateKey.ExportPem();",
+      "    sigPubPem  = sig.PublicKey.ExportPem();",
+      "    sigPrivPem = sig.PrivateKey.ExportPem();",
+      "}",
+      "",
+      "${1:builder}.Services.AddPostQuantumHybrid(options =>",
+      "{",
+      "    options.KemPublicKeyPem        = kemPubPem;",
+      "    options.KemPrivateKeyPem       = kemPrivPem;",
+      "    options.SignaturePublicKeyPem  = sigPubPem;",
+      "    options.SignaturePrivateKeyPem = sigPrivPem;",
+      "});",
+      "$0"
+    ]
+  },
+
+  "AspNetCore: AddPostQuantumHybrid from configuration": {
+    "prefix": "pqh-aspnet-config",
+    "scope": "csharp",
+    "description": "Production-style AddPostQuantumHybrid wiring from a configuration section.",
+    "body": [
+      "using PostQuantum.Hybrid.AspNetCore;",
+      "",
+      "${1:builder}.Services.AddPostQuantumHybrid(${1:builder}.Configuration.GetSection(\"${2:Crypto}\"));",
+      "$0"
+    ]
+  },
+
+  "AspNetCore: rotating hybrid KEM keys": {
+    "prefix": "pqh-aspnet-rotate",
+    "scope": "csharp",
+    "description": "Register the zero-downtime rotating hybrid KEM provider that watches PEM files on disk.",
+    "body": [
+      "using PostQuantum.Hybrid.AspNetCore;",
+      "",
+      "${1:builder}.Services.AddRotatingHybridKemKeys(",
+      "    ${2:\"/run/secrets/hybrid-kem.pub.pem\"},",
+      "    ${3:\"/run/secrets/hybrid-kem.priv.pem\"});",
+      "$0"
+    ]
+  },
+
+  "Startup readiness check": {
+    "prefix": "pqh-readiness-check",
+    "scope": "csharp",
+    "description": "Exercise a real sign/verify and signed-envelope seal/open flow at startup for hardening-grade readiness checks.",
+    "body": [
+      "using PostQuantum.Hybrid;",
+      "using PostQuantum.Hybrid.Envelopes;",
+      "using System.Security.Cryptography;",
+      "using System.Text;",
+      "",
+      "using var ${1:recipient} = HybridKem.GenerateKeyPair();",
+      "using var ${2:signer} = HybridSignature.GenerateKeyPair();",
+      "var ${3:probe} = Encoding.UTF8.GetBytes(\"${4:pqh readiness probe}\");",
+      "var ${5:envelope} = SignedHybridEnvelope.Seal(${2:signer}.PrivateKey, ${1:recipient}.PublicKey, ${3:probe});",
+      "var ${6:recovered} = SignedHybridEnvelope.Open(${2:signer}.PublicKey, ${1:recipient}.PrivateKey, ${5:envelope});",
+      "if (!CryptographicOperations.FixedTimeEquals(${3:probe}, ${6:recovered}))",
+      "{",
+      "    throw new CryptographicException(\"PostQuantum.Hybrid readiness check failed.\");",
+      "}",
+      "$0"
+    ]
+  }
+}

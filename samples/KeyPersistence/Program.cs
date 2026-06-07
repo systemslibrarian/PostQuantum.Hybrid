@@ -71,9 +71,15 @@ try
     using (var enc = HybridKem.Encapsulate(kemPub))
     {
         var recovered = HybridKem.Decapsulate(kemPriv, enc.Ciphertext);
-        var match = CryptographicOperations.FixedTimeEquals(enc.Secret.AsSpan(), recovered);
-        Console.WriteLine($"[runtime] KEM round-trip: {(match ? "OK" : "FAIL")}");
-        CryptographicOperations.ZeroMemory(recovered);
+        try
+        {
+            var match = CryptographicOperations.FixedTimeEquals(enc.Secret.AsSpan(), recovered);
+            Console.WriteLine($"[runtime] KEM round-trip: {(match ? "OK" : "FAIL")}");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(recovered);
+        }
     }
 
     Console.WriteLine("[runtime] reloading signature keys and round-tripping...");

@@ -188,9 +188,12 @@ Before declaring this checklist complete, collect all of the following:
 
 - a CI run proving the negative tests above,
 - the analyzer configuration that makes `PQH001` to `PQH005`
-  build-breaking. You can automate auditing locally or in CI with the
-  provided script:
-  `Invoke-RestMethod https://raw.githubusercontent.com/systemslibrarian/PostQuantum.Hybrid/main/scripts/audit-pqh.ps1 | Invoke-Expression`
+      build-breaking. You can use a reviewed, versioned local copy of the
+      `audit-pqh.ps1` preflight script as supporting evidence for the
+      analyzer, warnings-as-errors, dependency-audit, and export-review
+      portions of this checklist. Review the script before use and keep a
+      stable local copy in source control or your build environment; do not
+      pipe a remote PowerShell script straight into `Invoke-Expression`.
 - the secret-storage and key-rotation runbook,
 - the incident-response runbook for key compromise and primitive break,
 - the document that states which algorithms, formats, and deployment

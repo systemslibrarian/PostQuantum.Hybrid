@@ -95,45 +95,51 @@ static int Seal(string pubKeyPath, string inputPath, string outputPath, int chun
     // Use the typed Secret wrapper (implicit-converts to ReadOnlySpan)
     // so the raw shared secret never escapes the call site as a byte[].
     var aesKey = DeriveKey(encapsulation.Secret, kemCt);
-    using var aes = new AesGcm(aesKey, TagSize);
-
-    using var input = File.OpenRead(inputPath);
-    using var output = File.Create(outputPath);
-
-    output.Write("PQHL"u8);
-    output.WriteByte(Version);
-    Span<byte> chunkSizeBytes = stackalloc byte[4];
-    BinaryPrimitives.WriteInt32LittleEndian(chunkSizeBytes, chunkSize);
-    output.Write(chunkSizeBytes);
-    output.Write(kemCt);
-
-    var buffer = new byte[chunkSize];
-    var ciphertext = new byte[chunkSize];
-    Span<byte> tag = stackalloc byte[TagSize];
-    Span<byte> nonce = stackalloc byte[NonceSize];
-
-    long chunkIndex = 0;
-    long totalIn = 0;
-    while (true)
+    try
     {
-        var read = ReadFull(input, buffer);
-        var isFinal = read < chunkSize;
-        BuildNonce(nonce, chunkIndex);
-        var aad = BuildAad(chunkIndex, isFinal);
-        aes.Encrypt(nonce, buffer.AsSpan(0, read), ciphertext.AsSpan(0, read), tag, associatedData: aad);
-        output.Write(ciphertext, 0, read);
-        output.Write(tag);
-        totalIn += read;
-        chunkIndex++;
-        if (isFinal)
-        {
-            break;
-        }
-    }
+        using var aes = new AesGcm(aesKey, TagSize);
 
-    CryptographicOperations.ZeroMemory(aesKey);
-    Console.WriteLine($"sealed {totalIn} bytes in {chunkIndex} chunks of {chunkSize} B; output {output.Length} bytes.");
-    return 0;
+        using var input = File.OpenRead(inputPath);
+        using var output = File.Create(outputPath);
+
+        output.Write("PQHL"u8);
+        output.WriteByte(Version);
+        Span<byte> chunkSizeBytes = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(chunkSizeBytes, chunkSize);
+        output.Write(chunkSizeBytes);
+        output.Write(kemCt);
+
+        var buffer = new byte[chunkSize];
+        var ciphertext = new byte[chunkSize];
+        Span<byte> tag = stackalloc byte[TagSize];
+        Span<byte> nonce = stackalloc byte[NonceSize];
+
+        long chunkIndex = 0;
+        long totalIn = 0;
+        while (true)
+        {
+            var read = ReadFull(input, buffer);
+            var isFinal = read < chunkSize;
+            BuildNonce(nonce, chunkIndex);
+            var aad = BuildAad(chunkIndex, isFinal);
+            aes.Encrypt(nonce, buffer.AsSpan(0, read), ciphertext.AsSpan(0, read), tag, associatedData: aad);
+            output.Write(ciphertext, 0, read);
+            output.Write(tag);
+            totalIn += read;
+            chunkIndex++;
+            if (isFinal)
+            {
+                break;
+            }
+        }
+
+        Console.WriteLine($"sealed {totalIn} bytes in {chunkIndex} chunks of {chunkSize} B; output {output.Length} bytes.");
+        return 0;
+    }
+    finally
+    {
+        CryptographicOperations.ZeroMemory(aesKey);
+    }
 }
 
 static int Open(string privKeyPath, string inputPath, string outputPath)
@@ -168,45 +174,57 @@ static int Open(string privKeyPath, string inputPath, string outputPath)
     ReadAll(input, kemCt);
 
     var sharedSecret = HybridKem.Decapsulate(priv, kemCt);
-    var aesKey = DeriveKey(sharedSecret, kemCt);
-    using var aes = new AesGcm(aesKey, TagSize);
-
-    using var output = File.Create(outputPath);
-
-    var ciphertext = new byte[chunkSize];
-    var plaintext = new byte[chunkSize];
-    Span<byte> tag = stackalloc byte[TagSize];
-    Span<byte> nonce = stackalloc byte[NonceSize];
-
-    long chunkIndex = 0;
-    long totalOut = 0;
-    var remaining = input.Length - input.Position;
-    while (remaining > 0)
+    try
     {
-        var chunkPlusTag = (int)Math.Min(remaining, chunkSize + TagSize);
-        var chunkLen = chunkPlusTag - TagSize;
-        if (chunkLen < 0)
+        var aesKey = DeriveKey(sharedSecret, kemCt);
+        try
         {
-            throw new CryptographicException("Truncated file.");
+            using var aes = new AesGcm(aesKey, TagSize);
+
+            using var output = File.Create(outputPath);
+
+            var ciphertext = new byte[chunkSize];
+            var plaintext = new byte[chunkSize];
+            Span<byte> tag = stackalloc byte[TagSize];
+            Span<byte> nonce = stackalloc byte[NonceSize];
+
+            long chunkIndex = 0;
+            long totalOut = 0;
+            var remaining = input.Length - input.Position;
+            while (remaining > 0)
+            {
+                var chunkPlusTag = (int)Math.Min(remaining, chunkSize + TagSize);
+                var chunkLen = chunkPlusTag - TagSize;
+                if (chunkLen < 0)
+                {
+                    throw new CryptographicException("Truncated file.");
+                }
+                ReadAll(input, ciphertext.AsSpan(0, chunkLen));
+                ReadAll(input, tag);
+
+                var isFinal = (remaining - chunkPlusTag) == 0;
+                BuildNonce(nonce, chunkIndex);
+                var aad = BuildAad(chunkIndex, isFinal);
+
+                aes.Decrypt(nonce, ciphertext.AsSpan(0, chunkLen), tag, plaintext.AsSpan(0, chunkLen), associatedData: aad);
+                output.Write(plaintext, 0, chunkLen);
+                totalOut += chunkLen;
+                chunkIndex++;
+                remaining -= chunkPlusTag;
+            }
+
+            Console.WriteLine($"opened {totalOut} bytes from {chunkIndex} chunks.");
+            return 0;
         }
-        ReadAll(input, ciphertext.AsSpan(0, chunkLen));
-        ReadAll(input, tag);
-
-        var isFinal = (remaining - chunkPlusTag) == 0;
-        BuildNonce(nonce, chunkIndex);
-        var aad = BuildAad(chunkIndex, isFinal);
-
-        aes.Decrypt(nonce, ciphertext.AsSpan(0, chunkLen), tag, plaintext.AsSpan(0, chunkLen), associatedData: aad);
-        output.Write(plaintext, 0, chunkLen);
-        totalOut += chunkLen;
-        chunkIndex++;
-        remaining -= chunkPlusTag;
+        finally
+        {
+            CryptographicOperations.ZeroMemory(aesKey);
+        }
     }
-
-    CryptographicOperations.ZeroMemory(aesKey);
-    CryptographicOperations.ZeroMemory(sharedSecret);
-    Console.WriteLine($"opened {totalOut} bytes from {chunkIndex} chunks.");
-    return 0;
+    finally
+    {
+        CryptographicOperations.ZeroMemory(sharedSecret);
+    }
 }
 
 static byte[] DeriveKey(ReadOnlySpan<byte> sharedSecret, ReadOnlySpan<byte> kemCiphertext)

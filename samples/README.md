@@ -1,6 +1,6 @@
 # PostQuantum.Hybrid — Samples
 
-Seven self-contained demos. Read them in roughly this order — they go
+Nine self-contained demos. Read them in roughly this order — they go
 from "just round-trip the primitives" up to "full ASP.NET Core service."
 
 | # | Sample | What it shows | When to read it |
@@ -28,7 +28,11 @@ before tagging a release — run the verification script from the repo
 root:
 
 ```pwsh
+# PowerShell 7+
 pwsh tools/run-all-samples.ps1
+
+# Windows PowerShell
+.\tools\run-all-samples.ps1
 ```
 
 It boots `WebApiDemo` in the background, hits its endpoints, and tears

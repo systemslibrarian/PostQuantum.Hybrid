@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <RepoAnalyzerProject>$(MSBuildThisFileDirectory)src\PostQuantum.Hybrid.Analyzers\PostQuantum.Hybrid.Analyzers.csproj</RepoAnalyzerProject>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(RepoAnalyzerProject)') and
+                        '$(MSBuildProjectName)' != 'PostQuantum.Hybrid.Analyzers' and
+                        '$(MSBuildProjectName)' != 'PostQuantum.Hybrid.Analyzers.Tests'">
+    <ProjectReference Include="$(RepoAnalyzerProject)"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

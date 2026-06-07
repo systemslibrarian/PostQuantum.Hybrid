@@ -87,22 +87,28 @@ app.MapPost("/seal", ([FromBody] SealRequest req, IHybridKemKeyProvider keys) =>
         aesKey,
         info: Concat("PostQuantum.Hybrid WebApiDemo v1 AES-256-GCM", kemCt));
 
-    var plaintext = Encoding.UTF8.GetBytes(req.Plaintext);
-    var nonce = RandomNumberGenerator.GetBytes(12);
-    var ciphertext = new byte[plaintext.Length];
-    var tag = new byte[16];
-    using (var aes = new AesGcm(aesKey, 16))
+    try
     {
-        // KEM ct binds into AAD — PQH005 enforces this at build time.
-        aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
-    }
-    CryptographicOperations.ZeroMemory(aesKey);
+        var plaintext = Encoding.UTF8.GetBytes(req.Plaintext);
+        var nonce = RandomNumberGenerator.GetBytes(12);
+        var ciphertext = new byte[plaintext.Length];
+        var tag = new byte[16];
+        using (var aes = new AesGcm(aesKey, 16))
+        {
+            // KEM ct binds into AAD — PQH005 enforces this at build time.
+            aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
+        }
 
-    return Results.Json(new SealResponse(
-        KemCiphertext: Convert.ToBase64String(kemCt),
-        Nonce: Convert.ToBase64String(nonce),
-        Ciphertext: Convert.ToBase64String(ciphertext),
-        Tag: Convert.ToBase64String(tag)));
+        return Results.Json(new SealResponse(
+            KemCiphertext: Convert.ToBase64String(kemCt),
+            Nonce: Convert.ToBase64String(nonce),
+            Ciphertext: Convert.ToBase64String(ciphertext),
+            Tag: Convert.ToBase64String(tag)));
+    }
+    finally
+    {
+        CryptographicOperations.ZeroMemory(aesKey);
+    }
 });
 
 app.MapPost("/sign", ([FromBody] SignRequest req, IHybridSignatureKeyProvider keys) =>

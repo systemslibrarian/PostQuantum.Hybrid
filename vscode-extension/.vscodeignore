@@ -1,0 +1,11 @@
+﻿.vscode/**
+.vscode-test/**
+out/**
+node_modules/**
+src/**
+.gitignore
+vsc-extension-quickstart.md
+PUBLISHING.md
+*.vsix
+**/*.map
+**/*.ts
