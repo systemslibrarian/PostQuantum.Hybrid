@@ -39,7 +39,7 @@ jobs:
         run: dotnet CycloneDX src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj -o sbom -f sbom-postquantum-hybrid-analyzers.json --json
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom/*.json
