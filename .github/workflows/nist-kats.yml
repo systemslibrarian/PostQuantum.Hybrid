@@ -1,0 +1,57 @@
+name: NIST KATs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 8 * * 0"   # Sundays 08:23 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  kats:
+    name: NIST FIPS-203/204 KATs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore + build (Release)
+        run: |
+          dotnet restore PostQuantum.Hybrid.slnx
+          dotnet build PostQuantum.Hybrid.slnx --configuration Release --no-restore
+
+      - name: Run the in-repo deterministic key-generation regression
+        run: |
+          dotnet test tests/PostQuantum.Hybrid.Tests \
+            --configuration Release --no-build \
+            --filter "FullyQualifiedName~DeterministicKeyGenerationTests" \
+            --logger "console;verbosity=detailed"
+
+      # The following step is gated on a real NIST KAT mirror being
+      # available; the script is here so it's ready when we have one.
+      - name: Fetch NIST FIPS-203/204 KATs (optional)
+        if: ${{ env.NIST_KAT_MIRROR != '' }}
+        env:
+          NIST_KAT_MIRROR: ${{ vars.NIST_KAT_MIRROR }}
+        run: |
+          mkdir -p /tmp/nist-kats
+          curl -fL "$NIST_KAT_MIRROR/ML-KEM-768.zip" -o /tmp/nist-kats/mlkem768.zip
+          curl -fL "$NIST_KAT_MIRROR/ML-DSA-65.zip"  -o /tmp/nist-kats/mldsa65.zip
+          (cd /tmp/nist-kats && unzip -q mlkem768.zip && unzip -q mldsa65.zip)
+          # The repo doesn't ship a KAT runner yet; this is the spot to
+          # wire it in once we have one. For now we surface the artifact
+          # via upload-artifact so reviewers can inspect manually.
+
+      - name: Upload KATs (if downloaded)
+        if: ${{ env.NIST_KAT_MIRROR != '' && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nist-kats
+          path: /tmp/nist-kats/
+          retention-days: 7

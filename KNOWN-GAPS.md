@@ -106,15 +106,16 @@ exposes algorithm identifiers but does not implement any negotiation.
 **Plan:** Out of scope for the primitives package. See
 `PostQuantum.Hybrid.AspNetCore` for DI-friendly key wiring patterns.
 
-### `PostQuantum.Hybrid.AspNetCore` — key rotation shipped, no IDataProtector adapter
+### `PostQuantum.Hybrid.AspNetCore` — feature-complete for v1.0
 
 **State:** v1.0 ships `IRotatingHybridKemKeyProvider` /
 `IRotatingHybridSignatureKeyProvider` with `FileSystemWatcher`-based
-atomic key rotation (`AddRotatingHybridKemKeys` / `AddRotatingHybridSignatureKeys`).
-There is no `IDataProtector`-style adapter yet for ASP.NET Core's
-built-in protection pipeline.
+atomic key rotation, plus a `HybridEnvelopeDataProtector` that adapts
+the hybrid envelope construction to ASP.NET Core's `IDataProtector`
+pipeline with per-purpose AAD binding.
 
-**Plan:** Optional `IDataProtector` adapter in v1.x.
+**Plan:** No further follow-up planned for v1.0. v1.x may add a
+versioned multi-key reader for read-old-write-new rotation patterns.
 
 ### `PostQuantum.Hybrid.Analyzers` — five rules shipped, more possible
 
@@ -130,16 +131,17 @@ emerge. Code-fixes for PQH002–PQH005 are good follow-ups.
 
 ## Test / CI gaps
 
-### Property-style fuzz tests, but no coverage-guided fuzzing
+### Coverage-guided fuzzing scaffold shipped, no continuous runner
 
 **State:** `fuzz/PostQuantum.Hybrid.Fuzz` runs ~7,200 random/mutated
 inputs per execution through every parser entry point and asserts only
-expected exception types fire. This catches "parser crashes" reliably.
-It is **not** coverage-guided fuzzing — there is no AFL / libFuzzer
-harness driving the corpus.
+expected exception types fire. `fuzz/PostQuantum.Hybrid.Fuzz.Sharp`
+provides a SharpFuzz harness with 7 targets ready to drive under AFL
+or libFuzzer. We do not yet operate a dedicated machine continuously
+running the harness.
 
-**Plan:** Add a SharpFuzz harness for the parsers and run it
-continuously on a separate runner. (v1.x.)
+**Plan:** Stand up a long-running fuzz worker (separate from CI) and
+publish discovered corpus inputs back to the repo's seed corpus.
 
 ### Mutation testing CI shipped, regression gate not yet
 
@@ -150,16 +152,19 @@ fail on survival-rate regression past a fixed threshold.
 **Plan:** Wire the regression gate once we have a few weeks of
 baseline data.
 
-### Benchmark CI shipped, regression gate not yet
+### Benchmark baseline + comparison shipped, Linux baseline pending
 
 **State:** `.github/workflows/benchmark.yml` runs BenchmarkDotNet
-weekly on both TFMs and uploads JSON results as artifacts.
-Measured numbers are pinned in [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
-The workflow does not yet fail PRs on perf regression past a fixed
-threshold.
+weekly on both TFMs. `tools/compare-benchmarks.ps1` compares the
+results against pinned `benchmarks/baseline-{tfm}-windows.json`
+files (default regression threshold 25%) and exits non-zero on
+regression. CI invokes the comparison on Linux as
+`continue-on-error: true` until we capture a per-OS baseline (Linux
+numbers differ from Windows numbers measurably).
 
-**Plan:** Add a `benchmarks/baseline.json` per OS+TFM and a PR-time
-comparison action. (v1.x.)
+**Plan:** Capture a Linux baseline from a run on a standard GH
+runner and switch the comparison from `continue-on-error` to a hard
+fail.
 
 ## Distribution gaps
 
