@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Agreement;
 using Org.BouncyCastle.Crypto.Generators;
@@ -128,6 +129,42 @@ public static class HybridKem
     /// <summary>Recovers the 32-byte shared secret from a serialized hybrid KEM ciphertext.</summary>
     public static byte[] Decapsulate(HybridKemPrivateKey privateKey, ReadOnlySpan<byte> ciphertextBytes)
         => Decapsulate(privateKey, HybridKemCiphertext.FromBytes(ciphertextBytes));
+
+    /// <summary>
+    /// Non-throwing counterpart to <see cref="Decapsulate(HybridKemPrivateKey, HybridKemCiphertext)"/>.
+    /// Returns <see langword="true"/> with the 32-byte secret in
+    /// <paramref name="sharedSecret"/> on success; returns
+    /// <see langword="false"/> with <paramref name="sharedSecret"/> set to
+    /// <see langword="null"/> on parse / algorithm-mismatch failures. Does
+    /// <em>not</em> distinguish FIPS-203 implicit-rejection outcomes: a
+    /// malformed ML-KEM ciphertext returns <see langword="true"/> with a
+    /// pseudorandom secret, exactly as the throwing variant would.
+    /// </summary>
+    public static bool TryDecapsulate(
+        HybridKemPrivateKey privateKey,
+        HybridKemCiphertext ciphertext,
+        [NotNullWhen(true)] out byte[]? sharedSecret)
+    {
+        try { sharedSecret = Decapsulate(privateKey, ciphertext); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or ArgumentNullException or ObjectDisposedException)
+        { sharedSecret = null; return false; }
+    }
+
+    /// <summary>
+    /// Non-throwing counterpart to <see cref="Decapsulate(HybridKemPrivateKey, ReadOnlySpan{byte})"/>.
+    /// </summary>
+    public static bool TryDecapsulate(
+        HybridKemPrivateKey privateKey,
+        ReadOnlySpan<byte> ciphertextBytes,
+        [NotNullWhen(true)] out byte[]? sharedSecret)
+    {
+        if (!HybridKemCiphertext.TryFromBytes(ciphertextBytes, out var ciphertext))
+        {
+            sharedSecret = null;
+            return false;
+        }
+        return TryDecapsulate(privateKey, ciphertext, out sharedSecret);
+    }
 
     private static void EnsureSupported(HybridKemAlgorithm algorithm)
     {

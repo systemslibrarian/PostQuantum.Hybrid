@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -103,6 +104,28 @@ public sealed class HybridSignaturePrivateKey : IDisposable
         {
             CryptographicOperations.ZeroMemory(decoded);
         }
+    }
+
+    /// <summary>
+    /// Non-throwing counterpart to <see cref="Import"/>. On success the
+    /// caller owns the returned instance and must dispose it.
+    /// </summary>
+    public static bool TryImport(ReadOnlySpan<byte> source, [NotNullWhen(true)] out HybridSignaturePrivateKey? key)
+    {
+        try { key = Import(source); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException)
+        { key = null; return false; }
+    }
+
+    /// <summary>
+    /// Non-throwing counterpart to <see cref="ImportPem"/>. On success the
+    /// caller owns the returned instance and must dispose it.
+    /// </summary>
+    public static bool TryImportPem(string pem, [NotNullWhen(true)] out HybridSignaturePrivateKey? key)
+    {
+        try { key = ImportPem(pem); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException or ArgumentNullException)
+        { key = null; return false; }
     }
 
     /// <summary>Clears the sensitive key material held by this instance.</summary>

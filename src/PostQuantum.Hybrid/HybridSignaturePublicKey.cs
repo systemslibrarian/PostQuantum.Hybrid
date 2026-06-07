@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -70,4 +71,20 @@ public sealed class HybridSignaturePublicKey
 
     /// <summary>Parses a hybrid signature public key from PEM.</summary>
     public static HybridSignaturePublicKey ImportPem(string pem) => Import(PemFormatter.Decode(pem, PemLabel));
+
+    /// <summary>Non-throwing counterpart to <see cref="Import"/>.</summary>
+    public static bool TryImport(ReadOnlySpan<byte> source, [NotNullWhen(true)] out HybridSignaturePublicKey? key)
+    {
+        try { key = Import(source); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException)
+        { key = null; return false; }
+    }
+
+    /// <summary>Non-throwing counterpart to <see cref="ImportPem"/>.</summary>
+    public static bool TryImportPem(string pem, [NotNullWhen(true)] out HybridSignaturePublicKey? key)
+    {
+        try { key = ImportPem(pem); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException or ArgumentNullException)
+        { key = null; return false; }
+    }
 }

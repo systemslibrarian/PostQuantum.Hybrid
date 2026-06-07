@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -70,4 +71,30 @@ public sealed class HybridKemPublicKey
 
     /// <summary>Parses a hybrid KEM public key from PEM.</summary>
     public static HybridKemPublicKey ImportPem(string pem) => Import(PemFormatter.Decode(pem, PemLabel));
+
+    /// <summary>
+    /// Non-throwing counterpart to <see cref="Import"/>. Returns
+    /// <see langword="true"/> and the parsed key on success; returns
+    /// <see langword="false"/> with <paramref name="key"/> set to
+    /// <see langword="null"/> on any parse failure.
+    /// </summary>
+    public static bool TryImport(ReadOnlySpan<byte> source, [NotNullWhen(true)] out HybridKemPublicKey? key)
+    {
+        try { key = Import(source); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException)
+        { key = null; return false; }
+    }
+
+    /// <summary>
+    /// Non-throwing counterpart to <see cref="ImportPem"/>. Returns
+    /// <see langword="true"/> and the parsed key on success; returns
+    /// <see langword="false"/> with <paramref name="key"/> set to
+    /// <see langword="null"/> on any PEM-decode or parse failure.
+    /// </summary>
+    public static bool TryImportPem(string pem, [NotNullWhen(true)] out HybridKemPublicKey? key)
+    {
+        try { key = ImportPem(pem); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException or ArgumentNullException)
+        { key = null; return false; }
+    }
 }

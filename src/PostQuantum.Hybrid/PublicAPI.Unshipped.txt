@@ -5,3 +5,14 @@ PostQuantum.Hybrid.HybridKeyParseException.HybridKeyParseException(PostQuantum.H
 PostQuantum.Hybrid.InvalidCiphertextException
 PostQuantum.Hybrid.InvalidCiphertextException.InvalidCiphertextException(PostQuantum.Hybrid.HybridFailureReason reason, string! message) -> void
 PostQuantum.Hybrid.InvalidCiphertextException.InvalidCiphertextException(PostQuantum.Hybrid.HybridFailureReason reason, string! message, System.Exception! innerException) -> void
+static PostQuantum.Hybrid.HybridKem.TryDecapsulate(PostQuantum.Hybrid.HybridKemPrivateKey! privateKey, PostQuantum.Hybrid.HybridKemCiphertext! ciphertext, out byte[]? sharedSecret) -> bool
+static PostQuantum.Hybrid.HybridKem.TryDecapsulate(PostQuantum.Hybrid.HybridKemPrivateKey! privateKey, System.ReadOnlySpan<byte> ciphertextBytes, out byte[]? sharedSecret) -> bool
+static PostQuantum.Hybrid.HybridKemCiphertext.TryFromBytes(System.ReadOnlySpan<byte> source, out PostQuantum.Hybrid.HybridKemCiphertext? ciphertext) -> bool
+static PostQuantum.Hybrid.HybridKemPrivateKey.TryImport(System.ReadOnlySpan<byte> source, out PostQuantum.Hybrid.HybridKemPrivateKey? key) -> bool
+static PostQuantum.Hybrid.HybridKemPrivateKey.TryImportPem(string! pem, out PostQuantum.Hybrid.HybridKemPrivateKey? key) -> bool
+static PostQuantum.Hybrid.HybridKemPublicKey.TryImport(System.ReadOnlySpan<byte> source, out PostQuantum.Hybrid.HybridKemPublicKey? key) -> bool
+static PostQuantum.Hybrid.HybridKemPublicKey.TryImportPem(string! pem, out PostQuantum.Hybrid.HybridKemPublicKey? key) -> bool
+static PostQuantum.Hybrid.HybridSignaturePrivateKey.TryImport(System.ReadOnlySpan<byte> source, out PostQuantum.Hybrid.HybridSignaturePrivateKey? key) -> bool
+static PostQuantum.Hybrid.HybridSignaturePrivateKey.TryImportPem(string! pem, out PostQuantum.Hybrid.HybridSignaturePrivateKey? key) -> bool
+static PostQuantum.Hybrid.HybridSignaturePublicKey.TryImport(System.ReadOnlySpan<byte> source, out PostQuantum.Hybrid.HybridSignaturePublicKey? key) -> bool
+static PostQuantum.Hybrid.HybridSignaturePublicKey.TryImportPem(string! pem, out PostQuantum.Hybrid.HybridSignaturePublicKey? key) -> bool

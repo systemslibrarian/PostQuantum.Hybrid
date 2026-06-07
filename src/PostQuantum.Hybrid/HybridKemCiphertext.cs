@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using PostQuantum.Hybrid.Internal;
 
@@ -61,5 +62,13 @@ public sealed class HybridKemCiphertext
         var classical = source.Slice(1, AlgorithmSizes.X25519PublicKeyBytes).ToArray();
         var pq = source.Slice(1 + AlgorithmSizes.X25519PublicKeyBytes, AlgorithmSizes.MlKem768CiphertextBytes).ToArray();
         return new HybridKemCiphertext(algorithm, classical, pq);
+    }
+
+    /// <summary>Non-throwing counterpart to <see cref="FromBytes"/>.</summary>
+    public static bool TryFromBytes(ReadOnlySpan<byte> source, [NotNullWhen(true)] out HybridKemCiphertext? ciphertext)
+    {
+        try { ciphertext = FromBytes(source); return true; }
+        catch (Exception ex) when (ex is PostQuantumHybridException or CryptographicException or FormatException)
+        { ciphertext = null; return false; }
     }
 }
