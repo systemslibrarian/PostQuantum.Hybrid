@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>PqHybridEnvelopeTemplateFramework</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PostQuantum.Hybrid" Version="PqHybridEnvelopeTemplatePackageVersion" />
+    <PackageReference Include="PostQuantum.Hybrid.Envelopes" Version="PqHybridEnvelopeTemplatePackageVersion" />
+    <PackageReference Include="PostQuantum.Hybrid.Analyzers" Version="PqHybridEnvelopeTemplatePackageVersion" />
+  </ItemGroup>
+
+</Project>

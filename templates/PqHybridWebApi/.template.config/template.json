@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Paul Clark",
+  "classifications": [ "Web", "WebAPI", "ASP.NET", "Cryptography", "Post-Quantum" ],
+  "name": "PostQuantum.Hybrid ASP.NET Core API",
+  "description": "A minimal ASP.NET Core Web API pre-wired with PostQuantum.Hybrid for hybrid KEM and signature operations, including IHybridKemKeyProvider / IHybridSignatureKeyProvider DI.",
+  "identity": "PostQuantum.Hybrid.Templates.PqHybridWebApi",
+  "shortName": "pqhybrid-webapi",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "PqHybridWebApiTemplate",
+  "preferNameDirectory": true,
+  "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "description": "Target framework.",
+      "datatype": "choice",
+      "choices": [
+        { "choice": "net10.0", "description": "Target net10.0 (native ML-KEM and ML-DSA)" },
+        { "choice": "net8.0",  "description": "Target net8.0 (BouncyCastle backend)" }
+      ],
+      "defaultValue": "net10.0",
+      "replaces": "PqHybridWebApiTemplateFramework"
+    },
+    "PackageVersion": {
+      "type": "parameter",
+      "description": "PostQuantum.Hybrid version.",
+      "datatype": "string",
+      "defaultValue": "1.0.0",
+      "replaces": "PqHybridWebApiTemplatePackageVersion"
+    }
+  }
+}
