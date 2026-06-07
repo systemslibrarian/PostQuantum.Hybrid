@@ -1,19 +1,25 @@
 // =============================================================================
 // PostQuantum.Hybrid sample: minimal ASP.NET Core API.
 //
-// Demonstrates PostQuantum.Hybrid.AspNetCore wiring:
-//   - One-time startup generates hybrid KEM and signature key pairs and feeds
-//     them into the DI'd providers via inline PEM (in production you'd load
-//     from a secrets file or KMS instead).
+// Wires PostQuantum.Hybrid.AspNetCore into a Minimal API host:
+//   - One-time startup generates hybrid KEM and signature key pairs and
+//     feeds them into the DI'd providers via inline PEM (in production
+//     these come from a secrets file / KMS / IDataProtector).
 //   - GET  /pub/kem-public-key   returns the recipient KEM public key (PEM)
 //   - GET  /pub/sig-public-key   returns the signature public key (PEM)
-//   - POST /seal                 accepts a plaintext, returns a hybrid-KEM
-//                                ciphertext + AES-GCM-encrypted payload.
-//   - POST /sign                 accepts data, returns a base64 hybrid signature.
+//   - POST /seal                 server-side encryption against the
+//                                hosted KEM key. Returns base64(KEM ct,
+//                                nonce, AES-GCM ct, tag).
+//   - POST /sign                 server-side hybrid signature.
 //
-// This is a single-process demo; in real deployments the server holds the
-// recipient KEM private key, and clients hold the signature public key for
-// verifying server-issued artifacts.
+// Production guidance (this sample is single-process for clarity):
+//   • The server holds the KEM private key. Clients hold the signature
+//     PUBLIC key only — they verify server-issued artifacts with it.
+//   • Use IRotatingHybridKemKeyProvider (in PostQuantum.Hybrid.AspNetCore)
+//     to swap keys on disk without restarting. This sample uses the
+//     simpler in-memory provider.
+//   • For envelope encryption from clients, prefer IDataProtector via
+//     HybridEnvelopeDataProtector — it handles per-purpose AAD binding.
 // =============================================================================
 
 using System.Security.Cryptography;
@@ -24,10 +30,11 @@ using PostQuantum.Hybrid.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// One-time bootstrap key generation — in production these come from a KMS / file.
-// Compute the PEM payloads up front so we can dispose the bootstrap pairs
-// immediately. The options lambda below runs lazily on first DI resolve, so
-// it must NOT capture the disposable key-pair instances directly.
+// One-time bootstrap key generation. Compute PEM payloads up front so
+// the bootstrap pairs can be disposed immediately; the options lambda
+// below runs lazily on first DI resolve, so it must NOT capture the
+// disposable key-pair instances directly (that would surface as
+// ObjectDisposedException on the first request — and did in v1.0-rc).
 string kemPubPem, kemPrivPem, sigPubPem, sigPrivPem;
 using (var bootstrapKem = HybridKem.GenerateKeyPair())
 using (var bootstrapSig = HybridSignature.GenerateKeyPair())
@@ -59,13 +66,24 @@ app.MapGet("/pub/sig-public-key", (IHybridSignatureKeyProvider keys) =>
 
 app.MapPost("/seal", ([FromBody] SealRequest req, IHybridKemKeyProvider keys) =>
 {
+    if (req is null || req.Plaintext is null)
+    {
+        return Results.BadRequest("missing 'plaintext'.");
+    }
+
+    // Encapsulate against our hosted KEM public key. `using` zeroes the
+    // shared-secret buffer on scope exit even if encryption throws.
     using var enc = HybridKem.Encapsulate(keys.PublicKey);
     var kemCt = enc.Ciphertext.ToBytes();
 
+    // Derive an AES key from the hybrid shared secret via HKDF. We use
+    // enc.Secret (typed wrapper, implicit-converts to ReadOnlySpan)
+    // instead of enc.SharedSecret so the secret never appears as a
+    // raw byte[] in this method — PQH002 would flag that pattern.
     var aesKey = new byte[32];
     HKDF.Expand(
         HashAlgorithmName.SHA256,
-        enc.SharedSecret,
+        enc.Secret,
         aesKey,
         info: Concat("PostQuantum.Hybrid WebApiDemo v1 AES-256-GCM", kemCt));
 
@@ -75,6 +93,7 @@ app.MapPost("/seal", ([FromBody] SealRequest req, IHybridKemKeyProvider keys) =>
     var tag = new byte[16];
     using (var aes = new AesGcm(aesKey, 16))
     {
+        // KEM ct binds into AAD — PQH005 enforces this at build time.
         aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
     }
     CryptographicOperations.ZeroMemory(aesKey);
@@ -88,6 +107,11 @@ app.MapPost("/seal", ([FromBody] SealRequest req, IHybridKemKeyProvider keys) =>
 
 app.MapPost("/sign", ([FromBody] SignRequest req, IHybridSignatureKeyProvider keys) =>
 {
+    if (req is null || req.Data is null)
+    {
+        return Results.BadRequest("missing 'data'.");
+    }
+
     var data = Encoding.UTF8.GetBytes(req.Data);
     var sig = HybridSignature.Sign(keys.PrivateKey, data);
     return Results.Json(new SignResponse(Convert.ToBase64String(sig)));

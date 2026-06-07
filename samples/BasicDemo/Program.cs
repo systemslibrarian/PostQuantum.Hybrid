@@ -19,15 +19,18 @@ static void KemDemo()
     Console.WriteLine($"Alice private key: {alice.PrivateKey.Export().Length,5} bytes");
 
     // Bob encapsulates a shared secret against Alice's public key.
+    // The `using` zeroes the secret buffer on scope exit.
     using var encapsulation = HybridKem.Encapsulate(alice.PublicKey);
     Console.WriteLine($"Ciphertext:        {encapsulation.Ciphertext.ToBytes().Length,5} bytes");
-    Console.WriteLine($"Bob's shared:      {Hex(encapsulation.SharedSecret)}");
+    Console.WriteLine($"Bob's shared:      {Hex(encapsulation.Secret.AsSpan())}");
 
     // Alice decapsulates to recover the same shared secret.
     var aliceSecret = HybridKem.Decapsulate(alice.PrivateKey, encapsulation.Ciphertext);
     Console.WriteLine($"Alice's shared:    {Hex(aliceSecret)}");
 
-    Console.WriteLine($"Match: {CryptographicOperations.FixedTimeEquals(encapsulation.SharedSecret, aliceSecret)}");
+    // Always compare secrets in constant time. The typed wrapper
+    // implicit-converts to ReadOnlySpan<byte>, so it slots straight in.
+    Console.WriteLine($"Match: {CryptographicOperations.FixedTimeEquals(encapsulation.Secret.AsSpan(), aliceSecret)}");
 
     // Zero the recovered secret once we're done with it.
     CryptographicOperations.ZeroMemory(aliceSecret);

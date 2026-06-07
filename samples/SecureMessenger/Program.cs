@@ -1,23 +1,36 @@
 // =============================================================================
 // PostQuantum.Hybrid sample: end-to-end signed-and-encrypted messaging.
 //
-// Combines BOTH hybrid primitives in a realistic flow:
+// This combines BOTH hybrid primitives in a realistic flow. It is the
+// most complete sample in the repo and the best place to copy from when
+// you need authenticated confidentiality (i.e. the recipient learns
+// both "what was said" and "who said it").
 //
-//   Setup: Alice publishes her signing-public-key, Bob publishes his KEM-
-//          public-key.
+// Wire layout (one packet from Alice to Bob):
 //
-//   Alice -> Bob:
-//     1. Alice encapsulates against Bob's KEM public key, derives an AES key.
-//     2. Alice encrypts the message body with AES-GCM. The AAD includes the
-//        KEM ciphertext to bind the ciphertext to this exchange.
-//     3. Alice signs (KEM_ciphertext || nonce || AES_ciphertext || tag) so
-//        Bob can verify both authenticity (from Alice) and integrity.
-//     4. Alice transmits { KEM_ct, nonce, AES_ct, tag, signature }.
+//   ┌─────────────────────────── to-be-signed (tbs) ─────────────────────────┐
+//   │  KEM_ct (1121) │ nonce (12) │ ct_len (4 LE) │ ciphertext │ tag (16) │
+//   └────────────────────────────────────────────────────────────────────────┘
+//   │ hybrid signature (3374) │
+//   └─────────────────────────┘
 //
-//   Bob:
-//     1. Verifies the signature with Alice's public key. If invalid, abort.
-//     2. Decapsulates the KEM ciphertext with his private key.
-//     3. Decrypts the AES-GCM body.
+// Why each piece is there:
+//   • KEM_ct          — the post-quantum + classical key exchange material.
+//   • nonce           — fresh AES-GCM nonce, unique per packet.
+//   • ct_len + ct     — the actual encrypted payload.
+//   • tag             — AES-GCM authentication tag binding key, nonce, ct, and AAD.
+//   • hybrid signature — proves Alice authored the tbs *before* Bob acts on it.
+//
+// Two non-obvious patterns:
+//   1. Verify BEFORE decrypt. Bob runs HybridSignature.Verify on the
+//      tbs first; if that fails he never decapsulates or decrypts. The
+//      PQH003 analyzer enforces this ordering at build time. Acting on
+//      unauthenticated input — even just decapsulating it — widens the
+//      attack surface (timing side channels, exception oracles, etc.).
+//   2. KEM ct binds into BOTH the AEAD AAD and the HKDF info. Either
+//      one alone is sufficient; using both means a swapped KEM ct is
+//      rejected at AEAD decryption AND yields a different derived key.
+//      Defense in depth.
 // =============================================================================
 
 using System.Buffers.Binary;
@@ -33,6 +46,8 @@ const int HybridSigSize = 3374;
 Console.WriteLine("PostQuantum.Hybrid sample: signed + encrypted messaging\n");
 
 // ----- One-time setup: each party generates their key material. -----
+// Both pairs use `using` so the private keys are zeroed on dispose.
+// PQH001 flags any local of these types declared without it.
 using var aliceSigning = HybridSignature.GenerateKeyPair();
 using var bobKem = HybridKem.GenerateKeyPair();
 
@@ -51,6 +66,8 @@ var recovered = BobReceivesFromAlice(packet, bobKem.PrivateKey, aliceSigning.Pub
 Console.WriteLine($"Recovered:         \"{Encoding.UTF8.GetString(recovered)}\"\n");
 
 // ----- Tamper-detection test. -----
+// Flip a byte inside the ciphertext portion. Verify catches it because
+// the signature was over the full tbs (which includes the ciphertext).
 packet[KemCtSize + NonceSize + 2] ^= 0xFF;
 try
 {
@@ -67,22 +84,30 @@ static byte[] AliceSendsToBob(
     HybridKemPublicKey bobPublicKey,
     HybridSignaturePrivateKey alicePrivateKey)
 {
+    // Encapsulate, then derive an AES key from the resulting hybrid
+    // shared secret. The `using` zeroes the secret buffer on scope exit;
+    // we use `Secret` (the typed wrapper) instead of `SharedSecret`
+    // (byte[]) so the secret flows directly into HKDF via implicit span
+    // conversion, with no ToArray() boilerplate.
     using var encapsulation = HybridKem.Encapsulate(bobPublicKey);
     var kemCt = encapsulation.Ciphertext.ToBytes();
-    var aesKey = DeriveAesKey(encapsulation.SharedSecret, kemCt);
+    var aesKey = DeriveAesKey(encapsulation.Secret, kemCt);
 
     var nonce = RandomNumberGenerator.GetBytes(NonceSize);
     var ciphertext = new byte[plaintext.Length];
     var tag = new byte[TagSize];
     using (var aes = new AesGcm(aesKey, TagSize))
     {
-        // Bind the KEM ciphertext into the AEAD as associated data so
-        // any rearrangement breaks decryption.
+        // Bind kemCt into the AEAD as associatedData. PQH005 enforces
+        // this for any AesGcm call inside a method that uses HybridKem.
         aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData: kemCt);
     }
     CryptographicOperations.ZeroMemory(aesKey);
 
     // Build the to-be-signed block: KEM_ct || nonce || AES_ct_len(LE u32) || AES_ct || tag.
+    // Note: we sign the *ciphertext*, not the plaintext. That means
+    // verify-before-decrypt is sufficient — Bob doesn't need to decrypt
+    // anything to learn whether Alice authored this packet.
     var tbs = new byte[kemCt.Length + NonceSize + 4 + ciphertext.Length + TagSize];
     var span = tbs.AsSpan();
     var offset = 0;
@@ -115,6 +140,10 @@ static byte[] BobReceivesFromAlice(
     var tbs = packet[..tbsLen];
     var signature = packet[tbsLen..];
 
+    // Verify BEFORE doing anything else. PQH003 enforces this ordering
+    // at build time. Once verification passes we know the tbs was
+    // authored by Alice and has not been altered in transit; only then
+    // do we touch the KEM and AEAD with it.
     if (!HybridSignature.Verify(alicePublicKey, tbs, signature))
     {
         throw new CryptographicException("Signature does not validate. Rejecting packet.");
@@ -127,7 +156,13 @@ static byte[] BobReceivesFromAlice(
     var aesCt = tbs.Slice(aesCtStart, aesCtLen);
     var tag = tbs.Slice(aesCtStart + aesCtLen, TagSize);
 
-    var sharedSecret = HybridKem.Decapsulate(bobPrivateKey, kemCt);
+    // Non-throwing decap. The signature already proved authenticity,
+    // so a parse failure here is "this was definitely an attacker"
+    // (or a bug) — surface it as a clean cryptographic rejection.
+    if (!HybridKem.TryDecapsulate(bobPrivateKey, kemCt, out var sharedSecret))
+    {
+        throw new CryptographicException("Hybrid KEM decapsulation failed after a valid signature — input is malformed.");
+    }
     var aesKey = DeriveAesKey(sharedSecret, kemCt);
     CryptographicOperations.ZeroMemory(sharedSecret);
 
@@ -142,6 +177,9 @@ static byte[] BobReceivesFromAlice(
 
 static byte[] DeriveAesKey(ReadOnlySpan<byte> sharedSecret, ReadOnlySpan<byte> kemCiphertext)
 {
+    // Two-layer defense for the KEM ciphertext:
+    //  • bound into HKDF info — a swapped ct yields a different AES key.
+    //  • bound into AEAD AAD — a swapped ct also breaks the tag.
     var infoPrefix = Encoding.ASCII.GetBytes("PostQuantum.Hybrid SecureMessenger v1 AES-256-GCM");
     var info = new byte[infoPrefix.Length + kemCiphertext.Length];
     infoPrefix.CopyTo(info, 0);

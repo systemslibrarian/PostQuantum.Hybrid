@@ -82,10 +82,19 @@ static int Seal(string pubKeyPath, string inputPath, string outputPath, int chun
         return 1;
     }
 
-    var pub = HybridKemPublicKey.ImportPem(File.ReadAllText(pubKeyPath));
+    // TryImportPem at the trust boundary — the file on disk could be
+    // anything. A throwing Import would also work; the Try variant just
+    // lets us shape the error explicitly.
+    if (!HybridKemPublicKey.TryImportPem(File.ReadAllText(pubKeyPath), out var pub))
+    {
+        Console.Error.WriteLine($"refusing to use {pubKeyPath}: malformed hybrid KEM public PEM.");
+        return 1;
+    }
     using var encapsulation = HybridKem.Encapsulate(pub);
     var kemCt = encapsulation.Ciphertext.ToBytes();
-    var aesKey = DeriveKey(encapsulation.SharedSecret, kemCt);
+    // Use the typed Secret wrapper (implicit-converts to ReadOnlySpan)
+    // so the raw shared secret never escapes the call site as a byte[].
+    var aesKey = DeriveKey(encapsulation.Secret, kemCt);
     using var aes = new AesGcm(aesKey, TagSize);
 
     using var input = File.OpenRead(inputPath);
@@ -129,7 +138,12 @@ static int Seal(string pubKeyPath, string inputPath, string outputPath, int chun
 
 static int Open(string privKeyPath, string inputPath, string outputPath)
 {
-    using var priv = HybridKemPrivateKey.ImportPem(File.ReadAllText(privKeyPath));
+    if (!HybridKemPrivateKey.TryImportPem(File.ReadAllText(privKeyPath), out var importedPriv))
+    {
+        Console.Error.WriteLine($"refusing to use {privKeyPath}: malformed hybrid KEM private PEM.");
+        return 1;
+    }
+    using var priv = importedPriv;
 
     using var input = File.OpenRead(inputPath);
     Span<byte> headerMagic = stackalloc byte[4];

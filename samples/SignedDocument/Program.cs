@@ -48,15 +48,24 @@ try
     }
 
     // ----- Verifier loads only the public artifacts and validates. -----
+    // Use TryImportPem at the trust boundary: the public PEM came over
+    // the wire (or off disk) and might be malformed. Returning false on
+    // parse failure is cleaner than catching CryptographicException.
     {
-        var publicKey = HybridSignaturePublicKey.ImportPem(File.ReadAllText(publicKeyPath));
+        if (!HybridSignaturePublicKey.TryImportPem(File.ReadAllText(publicKeyPath), out var publicKey))
+        {
+            throw new InvalidOperationException(
+                $"Refusing to verify against {Path.GetFileName(publicKeyPath)}: PEM parse failed.");
+        }
         var documentBytes = File.ReadAllBytes(documentPath);
         var signature = File.ReadAllBytes(signaturePath);
 
         var ok = HybridSignature.Verify(publicKey, documentBytes, signature);
         Console.WriteLine($"[verifier] signature valid for original document: {ok}");
 
-        // Tamper-detection.
+        // Tamper-detection. Flipping any byte in the document body
+        // changes the hash that ML-DSA-65 + Ed25519 each signed, so
+        // both component verifications fail.
         documentBytes[0] ^= 0xFF;
         var tamperedOk = HybridSignature.Verify(publicKey, documentBytes, signature);
         Console.WriteLine($"[verifier] signature valid for tampered document: {tamperedOk} (expected False)");
