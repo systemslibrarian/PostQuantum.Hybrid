@@ -98,7 +98,16 @@ internal sealed class RotatingHybridKemKeyProvider : IRotatingHybridKemKeyProvid
                 _privateKey = next.Private;
                 newVersion = ++_version;
             }
-            toDispose?.Dispose();
+            // Delay disposal of the rotated-out private key so in-flight
+            // callers that fetched .PrivateKey before the swap can complete
+            // their decapsulation. Without this delay, an active
+            // HybridKem.Decapsulate(...) running on a worker thread can race
+            // the dispose and observe a zeroed buffer / ObjectDisposedException
+            // mid-operation. The window is bounded by RotationDisposeDelay;
+            // 30 s is generous for typical request lifetimes and short enough
+            // that an attacker who steals an in-RAM key copy still loses it
+            // within the next rotation cycle.
+            ScheduleDelayedDispose(toDispose);
             _logger?.LogInformation("RotatingHybridKemKeyProvider: rotated to version {Version}", newVersion);
             Rotated?.Invoke(newVersion);
         }
@@ -114,6 +123,37 @@ internal sealed class RotatingHybridKemKeyProvider : IRotatingHybridKemKeyProvid
         {
             throw new ObjectDisposedException(nameof(RotatingHybridKemKeyProvider));
         }
+    }
+
+    /// <summary>
+    /// How long to wait after a rotation before disposing the
+    /// previous private-key instance. Long enough for in-flight
+    /// callers that grabbed the old reference to finish; short enough
+    /// that a stolen in-RAM copy doesn't outlive the next rotation by
+    /// much. Internal to make this tunable for tests if it ever needs
+    /// to be.
+    /// </summary>
+    internal static TimeSpan RotationDisposeDelay { get; set; } = TimeSpan.FromSeconds(30);
+
+    private void ScheduleDelayedDispose(HybridKemPrivateKey? key)
+    {
+        if (key is null) { return; }
+        var delay = RotationDisposeDelay;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay).ConfigureAwait(false);
+                }
+                key.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "RotatingHybridKemKeyProvider: delayed dispose of previous private key threw");
+            }
+        });
     }
 
     public void Dispose()

@@ -97,7 +97,11 @@ internal sealed class RotatingHybridSignatureKeyProvider : IRotatingHybridSignat
                 _privateKey = next.Private;
                 newVersion = ++_version;
             }
-            toDispose?.Dispose();
+            // Delay disposal so in-flight callers (Sign / Verify) running
+            // on worker threads can complete against the old reference
+            // before its buffers are zeroed. See the matching comment in
+            // RotatingHybridKemKeyProvider.
+            ScheduleDelayedDispose(toDispose);
             _logger?.LogInformation("RotatingHybridSignatureKeyProvider: rotated to version {Version}", newVersion);
             Rotated?.Invoke(newVersion);
         }
@@ -113,6 +117,34 @@ internal sealed class RotatingHybridSignatureKeyProvider : IRotatingHybridSignat
         {
             throw new ObjectDisposedException(nameof(RotatingHybridSignatureKeyProvider));
         }
+    }
+
+    /// <summary>
+    /// How long to wait after a rotation before disposing the previous
+    /// private signing key. See the matching property in
+    /// <c>RotatingHybridKemKeyProvider</c> for the rationale.
+    /// </summary>
+    internal static TimeSpan RotationDisposeDelay { get; set; } = TimeSpan.FromSeconds(30);
+
+    private void ScheduleDelayedDispose(HybridSignaturePrivateKey? key)
+    {
+        if (key is null) { return; }
+        var delay = RotationDisposeDelay;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay).ConfigureAwait(false);
+                }
+                key.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "RotatingHybridSignatureKeyProvider: delayed dispose of previous private key threw");
+            }
+        });
     }
 
     public void Dispose()

@@ -42,4 +42,31 @@ public class MoveVerifyBeforeDecapsulateCodeFixTests
         Assert.True(verifyIndex < decapIndex,
             $"Verify must precede Decapsulate after fix. verify={verifyIndex} decap={decapIndex}\n---\n{fixedCode}");
     }
+
+    [Fact]
+    public async Task ReorderPreservesTrailingComment()
+    {
+        // Regression: the original code-fix called WithoutTrailingTrivia()
+        // unconditionally, which stripped end-of-line // comments on the
+        // verify statement when the if-throw guard was moved. Audit gem4
+        // BUG-4. Comment must round-trip into the new location.
+        var fixedCode = await ApplyAsync("""
+            using PostQuantum.Hybrid;
+            using System.Security.Cryptography;
+            class C
+            {
+                void M(HybridKemPrivateKey kemPriv, byte[] kemCt,
+                       HybridSignaturePublicKey sigPub, byte[] msg, byte[] sig)
+                {
+                    var ss = HybridKem.Decapsulate(kemPriv, kemCt);
+                    if (!HybridSignature.Verify(sigPub, msg, sig)) // ensures authenticity
+                    {
+                        throw new CryptographicException();
+                    }
+                }
+            }
+            """);
+
+        Assert.Contains("ensures authenticity", fixedCode);
+    }
 }

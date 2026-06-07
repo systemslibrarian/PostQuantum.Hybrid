@@ -67,26 +67,34 @@ public static class HybridKem
         var agreement = new X25519Agreement();
         agreement.Init(ephemeralPriv);
         var classicalSecret = new byte[agreement.AgreementSize];
-        agreement.CalculateAgreement(recipientPub, classicalSecret, 0);
+        try
+        {
+            agreement.CalculateAgreement(recipientPub, classicalSecret, 0);
 
-        var classicalCiphertext = ephemeralPub.GetEncoded(); // ephemeral public IS the X25519 "ciphertext"
+            var classicalCiphertext = ephemeralPub.GetEncoded(); // ephemeral public IS the X25519 "ciphertext"
 
-        // Post-quantum: ML-KEM-768 encapsulate.
-        var pqCiphertext = new byte[AlgorithmSizes.MlKem768CiphertextBytes];
-        using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
-        MlKemBackend.Encapsulate(publicKey.PqKeySpan, pqCiphertext, pqSecret.Span);
+            // Post-quantum: ML-KEM-768 encapsulate.
+            var pqCiphertext = new byte[AlgorithmSizes.MlKem768CiphertextBytes];
+            using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
+            MlKemBackend.Encapsulate(publicKey.PqKeySpan, pqCiphertext, pqSecret.Span);
 
-        var combiner = KemCombiner.ForAlgorithm(publicKey.Algorithm);
-        var combined = new byte[AlgorithmSizes.HybridSharedSecretBytes];
-        combiner.Combine(
-            classicalSecret, pqSecret.ReadOnlySpan,
-            classicalCiphertext, pqCiphertext,
-            publicKey.ClassicalKeySpan,
-            combined);
-        CryptographicOperations.ZeroMemory(classicalSecret);
+            var combiner = KemCombiner.ForAlgorithm(publicKey.Algorithm);
+            var combined = new byte[AlgorithmSizes.HybridSharedSecretBytes];
+            combiner.Combine(
+                classicalSecret, pqSecret.ReadOnlySpan,
+                classicalCiphertext, pqCiphertext,
+                publicKey.ClassicalKeySpan,
+                combined);
 
-        var ciphertext = new HybridKemCiphertext(publicKey.Algorithm, classicalCiphertext, pqCiphertext);
-        return new HybridKemEncapsulationResult(ciphertext, combined);
+            var ciphertext = new HybridKemCiphertext(publicKey.Algorithm, classicalCiphertext, pqCiphertext);
+            return new HybridKemEncapsulationResult(ciphertext, combined);
+        }
+        finally
+        {
+            // Zero unconditionally — exception or not — so the X25519
+            // shared secret never reaches the GC un-cleared.
+            CryptographicOperations.ZeroMemory(classicalSecret);
+        }
     }
 
     /// <summary>Recovers the 32-byte shared secret from a hybrid KEM ciphertext.</summary>
@@ -110,33 +118,41 @@ public static class HybridKem
         // (algorithm-id 0x02 binds pk_X into the SHA3 input); derive it
         // from the recipient private inside the same secure scope.
         var classicalSecret = new byte[AlgorithmSizes.X25519SharedSecretBytes];
-        var recipientClassicalPub = new byte[AlgorithmSizes.X25519PublicKeyBytes];
-        using (var classicalSeed = new SecureBuffer(privateKey.ClassicalKeySpan.Length))
+        try
         {
-            privateKey.ClassicalKeySpan.CopyTo(classicalSeed.Span);
-            var recipientPriv = new X25519PrivateKeyParameters(classicalSeed.ReadOnlySpan);
-            var ephemeralPub = new X25519PublicKeyParameters(ciphertext.ClassicalSpan);
-            var agreement = new X25519Agreement();
-            agreement.Init(recipientPriv);
-            agreement.CalculateAgreement(ephemeralPub, classicalSecret, 0);
-            recipientPriv.GeneratePublicKey().Encode(recipientClassicalPub, 0);
+            var recipientClassicalPub = new byte[AlgorithmSizes.X25519PublicKeyBytes];
+            using (var classicalSeed = new SecureBuffer(privateKey.ClassicalKeySpan.Length))
+            {
+                privateKey.ClassicalKeySpan.CopyTo(classicalSeed.Span);
+                var recipientPriv = new X25519PrivateKeyParameters(classicalSeed.ReadOnlySpan);
+                var ephemeralPub = new X25519PublicKeyParameters(ciphertext.ClassicalSpan);
+                var agreement = new X25519Agreement();
+                agreement.Init(recipientPriv);
+                agreement.CalculateAgreement(ephemeralPub, classicalSecret, 0);
+                recipientPriv.GeneratePublicKey().Encode(recipientClassicalPub, 0);
+            }
+
+            // Post-quantum: ML-KEM decapsulate. Implicit rejection means malformed
+            // ciphertexts yield pseudorandom secrets; the combined secret will simply
+            // differ from the sender's and downstream decryption will fail.
+            using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
+            MlKemBackend.Decapsulate(privateKey.PqKeySpan, ciphertext.PqSpan, pqSecret.Span);
+
+            var combiner = KemCombiner.ForAlgorithm(privateKey.Algorithm);
+            var combined = new byte[AlgorithmSizes.HybridSharedSecretBytes];
+            combiner.Combine(
+                classicalSecret, pqSecret.ReadOnlySpan,
+                ciphertext.ClassicalSpan, ciphertext.PqSpan,
+                recipientClassicalPub,
+                combined);
+            return combined;
         }
-
-        // Post-quantum: ML-KEM decapsulate. Implicit rejection means malformed
-        // ciphertexts yield pseudorandom secrets; the combined secret will simply
-        // differ from the sender's and downstream decryption will fail.
-        using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
-        MlKemBackend.Decapsulate(privateKey.PqKeySpan, ciphertext.PqSpan, pqSecret.Span);
-
-        var combiner = KemCombiner.ForAlgorithm(privateKey.Algorithm);
-        var combined = new byte[AlgorithmSizes.HybridSharedSecretBytes];
-        combiner.Combine(
-            classicalSecret, pqSecret.ReadOnlySpan,
-            ciphertext.ClassicalSpan, ciphertext.PqSpan,
-            recipientClassicalPub,
-            combined);
-        CryptographicOperations.ZeroMemory(classicalSecret);
-        return combined;
+        finally
+        {
+            // Zero unconditionally — exception or not — so the X25519
+            // shared secret never reaches the GC un-cleared.
+            CryptographicOperations.ZeroMemory(classicalSecret);
+        }
     }
 
     /// <summary>Recovers the 32-byte shared secret from a serialized hybrid KEM ciphertext.</summary>

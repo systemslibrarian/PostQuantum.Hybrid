@@ -20,6 +20,18 @@
 .nuget/
 packages/
 
+# Secrets — NEVER COMMIT. The NuGet publish key lives at the repo root
+# as Nuget.key.txt during release prep; broad patterns below catch the
+# obvious variants so a stray `git add -A` doesn't leak them.
+*.key
+*.key.txt
+[Nn]uget.key*
+[Aa]pikey*
+[Ss]ecret*
+*.pem
+!**/PqHybrid*Template/**/*.pem
+!**/.well-known/*.pem
+
 # Test results
 TestResults/
 coverage*.xml

@@ -121,9 +121,22 @@ public sealed class MoveVerifyBeforeDecapsulateCodeFix : CodeFixProvider
         }
 
         var statements = block.Statements;
+
+        // Preserve the verify-statement's original trailing trivia
+        // (especially any line-end // comments) when we relocate it.
+        // If the original trailing trivia does not already terminate
+        // the line, append a single newline so the moved statement
+        // is well-formed in the new location.
+        var preservedTrivia = verifyStatement.GetTrailingTrivia();
+        if (!preservedTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia)))
+        {
+            preservedTrivia = preservedTrivia.Add(SyntaxFactory.CarriageReturnLineFeed);
+        }
+        var movedVerify = verifyStatement.WithTrailingTrivia(preservedTrivia);
+
         var newStatements = statements
             .Remove(verifyStatement)
-            .Insert(statements.IndexOf(decapStatement), verifyStatement.WithoutTrailingTrivia().WithTrailingTrivia(SyntaxFactory.CarriageReturnLineFeed));
+            .Insert(statements.IndexOf(decapStatement), movedVerify);
 
         var newBlock = block.WithStatements(newStatements);
         var newRoot = root.ReplaceNode(block, newBlock);

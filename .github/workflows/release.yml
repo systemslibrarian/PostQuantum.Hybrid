@@ -30,14 +30,23 @@ jobs:
       - name: Test
         run: dotnet test PostQuantum.Hybrid.slnx --configuration Release --no-build
 
-      - name: Pack
+      - name: Pack all six packages
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          dotnet pack src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj \
-            --configuration Release \
-            -p:Version=$VERSION \
-            -p:ContinuousIntegrationBuild=true \
-            -o ./artifacts
+          for proj in \
+            src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj \
+            src/PostQuantum.Hybrid.Envelopes/PostQuantum.Hybrid.Envelopes.csproj \
+            src/PostQuantum.Hybrid.AspNetCore/PostQuantum.Hybrid.AspNetCore.csproj \
+            src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj \
+            src/PostQuantum.Hybrid.TestingSupport/PostQuantum.Hybrid.TestingSupport.csproj \
+            templates/PostQuantum.Hybrid.Templates.csproj
+          do
+            dotnet pack "$proj" \
+              --configuration Release \
+              -p:Version=$VERSION \
+              -p:ContinuousIntegrationBuild=true \
+              -o ./artifacts
+          done
 
       - name: Upload artifacts to GitHub release
         uses: softprops/action-gh-release@v3
