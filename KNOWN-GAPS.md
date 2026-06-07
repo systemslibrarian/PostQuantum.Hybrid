@@ -54,18 +54,25 @@ cleanly and validation falls back to the in-repo regression vectors.
 as test fixtures if their license permits) so the published-vector
 check runs unconditionally on the weekly schedule.
 
-### No formal proof of the combiner
+### No formal proof of the v1 default combiner (but X-Wing preview ships)
 
-**State:** The KEM combiner is HKDF-SHA256 with transcript binding (see
-[ADR 0003](docs/adr/0003-kem-combiner.md)). We argue informally that it
-inherits IND-CCA security from each component; we do not have a written-up
-formal proof.
+**State:** The v1 default KEM combiner is HKDF-SHA256 with transcript
+binding (see [ADR 0003](docs/adr/0003-kem-combiner.md)). We argue
+informally that it inherits IND-CCA security from each component; we
+do not have a written-up formal proof. The X-Wing combiner — which
+*does* have a published security analysis — ships at algorithm-id
+`0x02` as a preview opt-in via
+`HybridKemAlgorithm.X25519MlKem768XWing`; see
+[ADR 0013](docs/adr/0013-xwing-combiner-preview.md).
 
-**Impact:** Reviewers must accept the informal argument or reference the
-broader hybrid-KEM literature.
+**Impact:** Reviewers of the v1 default surface still must accept the
+informal argument or reference the broader hybrid-KEM literature.
+Callers who want the formal property today can opt in to
+algorithm-id `0x02`.
 
-**Plan:** Either commission a write-up or migrate to X-Wing (which *is*
-formally proved) behind a new algorithm-id byte. Open question for v1.x.
+**Plan:** Either commission a write-up for the v1 default, or promote
+the X-Wing combiner to the default in a future major release. The v1
+default remains HKDF for backward compatibility with shipped artifacts.
 
 ### No side-channel hardening beyond what the primitives provide
 

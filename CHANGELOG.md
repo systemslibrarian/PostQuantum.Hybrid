@@ -5,6 +5,142 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.0.0] — Unreleased
 
+### Added — v1.x preview surface (ships in 1.0; semver-stable when refined)
+- **X-Wing combiner at algorithm-id `0x02`.** New
+  `HybridKemAlgorithm.X25519MlKem768XWing` enum value backed by a
+  SHA3-256 combiner per draft-connolly-cfrg-xwing-kem. Opt-in only;
+  `HybridKem.Default` stays on the v1 HKDF combiner. v1 component
+  layout preserved — algorithm-id `0x02` is **not** byte-compatible
+  with the IETF X-Wing wire format (PQ-first ordering); strict IETF
+  interop is deliberately deferred to a future algorithm-id. See
+  [ADR 0013](docs/adr/0013-xwing-combiner-preview.md).
+- **X.509 SPKI / PKCS#8 framing.** Eight new methods total:
+  `Export/ImportSubjectPublicKeyInfo` on the public-key types,
+  `Export/ImportPkcs8PrivateKey` on the private-key types. DER
+  envelopes use `System.Formats.Asn1`; inner bytes are the v1 wire
+  format. Algorithm OIDs are placeholders under RFC 5612's IANA
+  Example PEN (`1.3.6.1.4.1.32473`) — the IETF LAMPS composite-KEM /
+  composite-signature drafts have not allocated final OIDs yet. See
+  [ADR 0014](docs/adr/0014-spki-pkcs8-preview.md).
+- **NIST `.rsp` KAT runner.** `NistKatRunner` + `NistKatParser` parse
+  NIST's published key-answer-test format and cross-validate both
+  BouncyCastle and the native .NET 10 backend against published
+  vectors when the `PQH_NIST_KAT_DIR` environment variable points at a
+  directory containing them. The weekly `nist-kats.yml` workflow
+  downloads them from `vars.NIST_KAT_MIRROR` when configured. Skips
+  cleanly when neither is set.
+
+### Added — analyzer-enforced sample policy
+- `samples/Directory.Build.props` adds `PostQuantum.Hybrid.Analyzers`
+  as an Analyzer-typed `ProjectReference` to every sample and turns on
+  `TreatWarningsAsErrors=true`. PQH001-PQH005 now run during sample
+  compilation — the samples are a living regression test for the
+  analyzer recommendations they showcase.
+- `Directory.Build.targets` at the repo root extends the same
+  policy to the library, tests, and benchmarks so analyzer regressions
+  anywhere in the repo are build failures.
+- `tests/Directory.Build.props` centralizes `coverlet.collector`
+  across every test project so the CI line-coverage gate sees all
+  suites (not just the main one).
+
+### Added — verification surface
+- **`tools/run-all-samples.ps1` (gold-standard rewrite).** Pre-build
+  with `TreatWarningsAsErrors=true`, then for each sample on each TFM:
+  exit code, expected-output substrings, stdout+stderr scanned for
+  unhandled-exception markers, per-sample timing. Web samples boot in
+  the background, hit live endpoints, parse responses by shape.
+  `LargeFileEncryption` does a real `gen → seal → open → SHA-256 diff`
+  round trip. `KeyRotationDemo` exercises the full zero-downtime
+  rotation flow (seal at v1 → `/rotate` → assert stale envelope returns
+  `410 Gone`). Failure logs are saved to a timestamped `LogDir`.
+  `-CIMode` emits GitHub Actions annotations.
+- **Code-coverage gate in CI.** New step under `ci.yml` installs
+  `dotnet-reportgenerator-globaltool`, merges every test project's
+  Cobertura report, and fails the build when combined line coverage
+  drops below 75% (current measured: ~87%).
+- **`NistKatTests`** also ships in-repo regression vectors (three
+  seed-based vectors per algorithm) that pin SHA-256 of the derived
+  public and private keys. On .NET 10 each vector is cross-checked
+  against the native backend when supported.
+
+### Added — two new samples
+- **`samples/EnvelopesDemo`** — recommended starting point for
+  encryption. One-call `HybridEnvelope.Seal` / `Open` and
+  `SignedHybridEnvelope.Seal` / `Open`.
+- **`samples/KeyRotationDemo`** — ASP.NET Core + `AddRotatingHybridKemKeys`
+  + an `IHostedService` that rotates on-disk PEM files every 15 s.
+  Endpoints: `GET /key`, `POST /seal`, `POST /open`, `POST /rotate`.
+- All seven existing samples polished for tighter resource scoping
+  (sensitive buffers cleared in `finally`, `TryImportPem` at trust
+  boundaries, `encapsulation.Secret` typed wrapper instead of raw
+  byte arrays).
+
+### Added — ecosystem
+- **VS Code extension** (`vscode-extension/`): nine C# snippets for
+  the canonical PostQuantum.Hybrid patterns, including high-level
+  `pqh-envelope` / `pqh-envelope-signed` snippets aimed at the
+  Envelopes package and `pqh-aspnet-rotate` for the rotation flow.
+  Every snippet body follows the analyzer-clean patterns the PQH
+  rules enforce. `.vsix` builds via `vsce package`; marketplace
+  publishing walkthrough in `vscode-extension/PUBLISHING.md`.
+- **Consumer hardening audit script** (`scripts/audit-pqh.ps1`).
+  Walks `.csproj` files under a given path, flags projects that
+  reference `PostQuantum.Hybrid` without also referencing
+  `PostQuantum.Hybrid.Analyzers`. Documented in `scripts/README.md`.
+
+### Added — documentation infrastructure
+- **DocFX site** under `docs-site/` auto-generates the public API
+  reference from XML doc comments on `PostQuantum.Hybrid`, `Envelopes`,
+  `AspNetCore`, and `TestingSupport`, plus pulls in every markdown
+  doc as conceptual articles. `.github/workflows/docs.yml` deploys
+  to GitHub Pages on every push to `main`.
+- README gains a **Performance** section with the pinned Windows
+  benchmark numbers (net8 BC vs net10 native), a **VS Code extension**
+  + **audit script** callout in the ecosystem bullet, an
+  **X.509 SPKI / PKCS#8 envelopes (preview)** subsection, an
+  **Alternative combiner: X-Wing (preview)** subsection, and an
+  expanded Documentation index covering the DocFX site,
+  `samples/README.md`, `scripts/README.md`, and
+  `vscode-extension/README.md`.
+- Codecov + Docs badges added to README alongside the existing
+  CI / CodeQL / NuGet / MIT badges.
+
+### Added — typed exception subclasses
+- `HybridKeyParseException` (Import / TryImportPem failures) and
+  `InvalidCiphertextException` (ciphertext shape / algorithm mismatch).
+  Both are subclasses of `PostQuantumHybridException`, so the
+  existing enum-based catch surface keeps working.
+
+### Added — Try-pattern APIs
+- `HybridKemPublicKey.TryImport` / `TryImportPem`,
+  `HybridKemPrivateKey.TryImport` / `TryImportPem`,
+  `HybridSignaturePublicKey.TryImport` / `TryImportPem`,
+  `HybridSignaturePrivateKey.TryImport` / `TryImportPem`,
+  `HybridKemCiphertext.TryFromBytes`,
+  `HybridKem.TryDecapsulate` (two overloads).
+
+### Added — `HybridSharedSecret` typed wrapper
+- `readonly struct HybridSharedSecret` with implicit conversion to
+  `ReadOnlySpan<byte>`. Exposed via
+  `HybridKemEncapsulationResult.Secret`; the existing
+  `SharedSecret` `byte[]` property stays for backward compatibility.
+
+### Internal — combiner seam + sensitive-buffer helper
+- New `IKemCombiner` interface with `HkdfTranscriptKemCombiner`
+  (algorithm-id `0x01`) and `XWingKemCombiner` (algorithm-id `0x02`)
+  implementations; `KemCombiner.ForAlgorithm` is the dispatch
+  registry.
+- New internal `SecureBuffer` ref struct centralises the
+  "heap-allocated short-lived byte buffer that zeroes itself on
+  `Dispose`" pattern. Adopted in the hot paths of
+  `HybridKem.Encapsulate` / `Decapsulate`.
+
+### Added — IKemCombiner change note
+- The combiner contract gained a `recipientClassicalPublicKey`
+  parameter (`HkdfTranscriptKemCombiner` ignores it;
+  `XWingKemCombiner` binds it per the X-Wing spec). Internal change
+  only; the public KEM API is unaffected.
+
 ### Changed — backend selection (ship-blocker fix)
 - **`MlKemBackend` and `MlDsaBackend` now fall back to BouncyCastle at
   runtime when the native .NET 10 `MLKem.IsSupported` / `MLDsa.IsSupported`
