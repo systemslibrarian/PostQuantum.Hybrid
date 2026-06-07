@@ -18,10 +18,12 @@ is required.
 | ID | Severity | What it flags |
 |---|---|---|
 | **PQH001** | Warning | `HybridKemKeyPair`, `HybridKemPrivateKey`, `HybridSignatureKeyPair`, `HybridSignaturePrivateKey`, or `HybridKemEncapsulationResult` created without `using` and without an explicit `Dispose()` call before the variable goes out of scope. |
+| **PQH002** | Warning | `HybridKemEncapsulationResult.SharedSecret` passed directly as the first argument to `AesGcm`/`AesCcm`/`ChaCha20Poly1305`/`HMACSHA*` instead of being fed through `HKDF.Expand` first. |
+| **PQH003** | Warning | `HybridKem.Decapsulate(...)` called earlier in a method body than `HybridSignature.Verify(...)`. Verification must precede decapsulation in sign-then-encrypt flows. |
 | **PQH004** | Warning | `HybridSignature.Verify(...)` called with its bool return value discarded. Ignoring the return is equivalent to skipping signature verification. |
 
-More rules planned (PQH002 shared-secret-as-key, PQH003 verify-after-decrypt
-ordering, PQH005 AEAD AAD binding). Suggestions welcome via GitHub issues.
+More rules may follow (e.g. PQH005 for AEAD without KEM-ciphertext binding
+as associated data). Suggestions welcome via GitHub issues.
 
 ## Examples
 

@@ -3,11 +3,13 @@
     <Project Path="src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj" />
     <Project Path="src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj" />
     <Project Path="src/PostQuantum.Hybrid.AspNetCore/PostQuantum.Hybrid.AspNetCore.csproj" />
+    <Project Path="src/PostQuantum.Hybrid.Envelopes/PostQuantum.Hybrid.Envelopes.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PostQuantum.Hybrid.Tests/PostQuantum.Hybrid.Tests.csproj" />
     <Project Path="tests/PostQuantum.Hybrid.Analyzers.Tests/PostQuantum.Hybrid.Analyzers.Tests.csproj" />
     <Project Path="tests/PostQuantum.Hybrid.AspNetCore.Tests/PostQuantum.Hybrid.AspNetCore.Tests.csproj" />
+    <Project Path="tests/PostQuantum.Hybrid.Envelopes.Tests/PostQuantum.Hybrid.Envelopes.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/BasicDemo/BasicDemo.csproj" />

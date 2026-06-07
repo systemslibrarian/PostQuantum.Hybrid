@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>PostQuantum.Hybrid.Envelopes</RootNamespace>
+    <AssemblyName>PostQuantum.Hybrid.Envelopes</AssemblyName>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition=" '$(GITHUB_ACTIONS)' == 'true' ">true</ContinuousIntegrationBuild>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>PostQuantum.Hybrid.Envelopes</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Paul Clark</Authors>
+    <Description>Opinionated, misuse-resistant message envelopes for PostQuantum.Hybrid. HybridEnvelope.Seal / Open wrap KEM + HKDF + AES-GCM into one call; SignedHybridEnvelope.Seal / Open add hybrid authentication on top.</Description>
+    <PackageTags>cryptography;post-quantum;pqc;envelope;encryption;hybrid;PostQuantum.Hybrid</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.Hybrid</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.Hybrid</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PostQuantum.Hybrid\PostQuantum.Hybrid.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
