@@ -3,6 +3,7 @@
 [![CI](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/ci.yml/badge.svg)](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/codeql.yml/badge.svg)](https://github.com/systemslibrarian/PostQuantum.Hybrid/actions/workflows/codeql.yml)
 [![codecov](https://codecov.io/gh/systemslibrarian/PostQuantum.Hybrid/branch/main/graph/badge.svg)](https://codecov.io/gh/systemslibrarian/PostQuantum.Hybrid)
+[![Docs](https://img.shields.io/badge/docs-systemslibrarian.github.io-blue)](https://systemslibrarian.github.io/PostQuantum.Hybrid/)
 [![NuGet](https://img.shields.io/nuget/v/PostQuantum.Hybrid.svg)](https://www.nuget.org/packages/PostQuantum.Hybrid/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

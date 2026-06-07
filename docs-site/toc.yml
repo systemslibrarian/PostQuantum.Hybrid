@@ -1,0 +1,26 @@
+- name: Home
+  href: index.md
+- name: Getting Started
+  href: getting-started.md
+- name: Spec & Design
+  items:
+    - name: SPEC (wire format)
+      href: ../docs/SPEC.md
+    - name: Design rationale
+      href: ../docs/design.md
+    - name: Threat model
+      href: ../docs/THREAT-MODEL.md
+    - name: ADRs
+      href: ../docs/adr/
+- name: Operations
+  items:
+    - name: Hardening checklist
+      href: ../HARDENING-CHECKLIST.md
+    - name: Known gaps
+      href: ../KNOWN-GAPS.md
+    - name: Security policy
+      href: ../SECURITY.md
+- name: Samples
+  href: ../samples/README.md
+- name: API Reference
+  href: api/
