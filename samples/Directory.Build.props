@@ -1,0 +1,28 @@
+<Project>
+
+  <!--
+    Centralized sample-project policy. Every sample inherits these
+    settings, so individual .csproj files only need to declare the
+    primary library/Envelopes/AspNetCore references they actually use.
+
+    The PostQuantum.Hybrid.Analyzers reference here means PQH001-PQH005
+    run during sample builds. Combined with TreatWarningsAsErrors below,
+    any sample that drifts away from the analyzer-clean patterns
+    breaks the build — so the samples become a living regression test
+    for the analyzer recommendations they showcase.
+  -->
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\PostQuantum.Hybrid.Analyzers\PostQuantum.Hybrid.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
