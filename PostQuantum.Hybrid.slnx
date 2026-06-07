@@ -21,6 +21,8 @@
     <Project Path="samples/SecureMessenger/SecureMessenger.csproj" />
     <Project Path="samples/WebApiDemo/WebApiDemo.csproj" />
     <Project Path="samples/LargeFileEncryption/LargeFileEncryption.csproj" />
+    <Project Path="samples/EnvelopesDemo/EnvelopesDemo.csproj" />
+    <Project Path="samples/KeyRotationDemo/KeyRotationDemo.csproj" />
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/PostQuantum.Hybrid.Benchmarks/PostQuantum.Hybrid.Benchmarks.csproj" />

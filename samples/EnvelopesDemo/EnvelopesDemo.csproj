@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PostQuantum.Hybrid.Samples.EnvelopesDemo</RootNamespace>
+    <AssemblyName>PostQuantum.Hybrid.Samples.EnvelopesDemo</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PostQuantum.Hybrid\PostQuantum.Hybrid.csproj" />
+    <ProjectReference Include="..\..\src\PostQuantum.Hybrid.Envelopes\PostQuantum.Hybrid.Envelopes.csproj" />
+  </ItemGroup>
+
+</Project>

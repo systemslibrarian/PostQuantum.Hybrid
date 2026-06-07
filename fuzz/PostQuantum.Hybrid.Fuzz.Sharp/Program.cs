@@ -46,7 +46,12 @@ Action<Stream> handler = target switch
     "sig-verify"         => static s => TryOrSwallow(() =>
     {
         using var pair = HybridSignature.GenerateKeyPair();
+        // Fuzz target: we only care that Verify does not throw on random
+        // bytes — the boolean outcome is irrelevant. PQH004 is the right
+        // rule for app code; here it's a false positive.
+#pragma warning disable PQH004
         _ = HybridSignature.Verify(pair.PublicKey, "fuzz"u8.ToArray(), ReadAll(s));
+#pragma warning restore PQH004
     }),
     "pem-kem-public-key" => static s => TryOrSwallow(() =>
     {

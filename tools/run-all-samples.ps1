@@ -120,6 +120,122 @@ try {
         }
     }
 
+    function Invoke-KeyRotationDemo {
+        param([string]$Tfm, [int]$Port)
+
+        Get-Process | Where-Object { $_.ProcessName -like '*KeyRotationDemo*' } |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+
+        $url = "http://localhost:$Port"
+        $env:ASPNETCORE_URLS = $url
+        $logPath = Join-Path ([System.IO.Path]::GetTempPath()) ("pqh-krd-$Tfm.log")
+        # Clean any persisted keys from a prior run so we always start at version 1.
+        $keysDir = Join-Path ([System.IO.Path]::GetTempPath()) 'pqh-key-rotation-demo'
+        if (Test-Path $keysDir) { Remove-Item -Path $keysDir -Recurse -Force -ErrorAction SilentlyContinue }
+
+        $proc = Start-Process -FilePath 'dotnet' -ArgumentList @(
+            'run', '--project', 'samples/KeyRotationDemo',
+            '--framework', $Tfm, '--configuration', 'Release', '--no-build',
+            '--no-launch-profile'
+        ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError "$logPath.err"
+
+        try {
+            $ready = $false
+            for ($i = 0; $i -lt 30; $i++) {
+                Start-Sleep -Milliseconds 500
+                try {
+                    $r = Invoke-WebRequest -Uri "$url/health" -UseBasicParsing -TimeoutSec 2
+                    if ($r.StatusCode -eq 200) { $ready = $true; break }
+                }
+                catch { }
+            }
+            if (-not $ready) {
+                Record -Sample 'KeyRotationDemo' -Tfm $Tfm -Pass $false -Detail "server did not become ready"
+                return
+            }
+
+            try {
+                # Initial GET /key — expect version 1.
+                $keyResp = Invoke-WebRequest -Uri "$url/key" -UseBasicParsing -TimeoutSec 5
+                $keyJson = $keyResp.Content | ConvertFrom-Json
+                if ($keyJson.version -ne 1) {
+                    Record -Sample 'KeyRotationDemo' -Tfm $Tfm -Pass $false -Detail "initial version was $($keyJson.version), expected 1"
+                    return
+                }
+
+                # Seal a message at version 1.
+                $sealResp = Invoke-WebRequest -Uri "$url/seal" -Method Post `
+                    -Body (@{ Plaintext = 'rotation demo test' } | ConvertTo-Json) `
+                    -ContentType 'application/json' -UseBasicParsing -TimeoutSec 5
+                $sealJson = $sealResp.Content | ConvertFrom-Json
+                $envelope = $sealJson.envelope
+
+                # /open it right away — should succeed.
+                $openResp = Invoke-WebRequest -Uri "$url/open" -Method Post `
+                    -Body (@{ Envelope = $envelope } | ConvertTo-Json) `
+                    -ContentType 'application/json' -UseBasicParsing -TimeoutSec 5
+                $openJson = $openResp.Content | ConvertFrom-Json
+                if ($openJson.plaintext -ne 'rotation demo test') {
+                    Record -Sample 'KeyRotationDemo' -Tfm $Tfm -Pass $false -Detail "open returned wrong plaintext"
+                    return
+                }
+
+                # Trigger explicit rotation. Returns once the watcher fires.
+                $rotResp = Invoke-WebRequest -Uri "$url/rotate" -Method Post -UseBasicParsing -TimeoutSec 10
+                $rotJson = $rotResp.Content | ConvertFrom-Json
+                if (-not $rotJson.rotatedToVersion -or $rotJson.rotatedToVersion -le 1) {
+                    Record -Sample 'KeyRotationDemo' -Tfm $Tfm -Pass $false -Detail "rotate did not advance version (got $($rotJson | ConvertTo-Json -Compress))"
+                    return
+                }
+
+                # The old envelope should now fail to open (410 Gone).
+                $staleOk = $false
+                $staleStatus = 0
+                $body = @{ Envelope = $envelope } | ConvertTo-Json
+                $req = [System.Net.HttpWebRequest]::Create("$url/open")
+                $req.Method = 'POST'
+                $req.ContentType = 'application/json'
+                $req.Timeout = 5000
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+                $req.ContentLength = $bytes.Length
+                $stream = $req.GetRequestStream()
+                $stream.Write($bytes, 0, $bytes.Length)
+                $stream.Close()
+                try {
+                    $resp = $req.GetResponse()
+                    $staleStatus = [int]$resp.StatusCode
+                    $resp.Close()
+                } catch [System.Net.WebException] {
+                    if ($_.Exception.Response) {
+                        $staleStatus = [int]$_.Exception.Response.StatusCode
+                    }
+                }
+                if ($staleStatus -ne 410) {
+                    Record -Sample 'KeyRotationDemo' -Tfm $Tfm -Pass $false -Detail "stale open returned $staleStatus, expected 410 Gone"
+                    return
+                }
+
+                Record -Sample 'KeyRotationDemo' -Tfm $Tfm -Pass $true -Detail "v1 seal/open + /rotate + stale-open 410 round-trip OK"
+            }
+            catch {
+                $logTail = ''
+                if (Test-Path $logPath) {
+                    $logTail = (Get-Content $logPath -Tail 15 -ErrorAction SilentlyContinue) -join '; '
+                }
+                Record -Sample 'KeyRotationDemo' -Tfm $Tfm -Pass $false -Detail "HTTP error: $($_.Exception.Message) | server: $logTail"
+                return
+            }
+        }
+        finally {
+            if ($proc -and -not $proc.HasExited) {
+                Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+            Remove-Item $logPath -ErrorAction SilentlyContinue
+            Remove-Item "$logPath.err" -ErrorAction SilentlyContinue
+            if (Test-Path $keysDir) { Remove-Item -Path $keysDir -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
     function Invoke-WebApiDemo {
         param([string]$Tfm, [int]$Port)
 
@@ -262,8 +378,15 @@ try {
 
         Invoke-LargeFileEncryption -Tfm $tfm
 
+        Invoke-SampleSimple -Project 'samples/EnvelopesDemo' -Tfm $tfm -ExpectedSubstrings @(
+            'Anonymous envelope',
+            'Signed envelope',
+            'Tampered envelope rejected'
+        )
+
         if (-not $SkipWebApi) {
             Invoke-WebApiDemo -Tfm $tfm -Port ($WebApiPort + ($Tfms.IndexOf($tfm)))
+            Invoke-KeyRotationDemo -Tfm $tfm -Port ($WebApiPort + 100 + ($Tfms.IndexOf($tfm)))
         }
     }
 

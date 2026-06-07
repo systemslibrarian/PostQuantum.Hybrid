@@ -187,7 +187,10 @@ public class ParserFuzzTests
                 mutated[byteIdx] ^= (byte)(1 << bitIdx);
             }
             // Should return false (or true with vanishingly small probability
-            // if no meaningful change), never throw.
+            // if no meaningful change), never throw. Intentionally discard
+            // the result — this fuzz test is checking the throw surface,
+            // not the verify outcome.
+#pragma warning disable PQH004
             try
             {
                 _ = HybridSignature.Verify(pair.PublicKey, msg, mutated);
@@ -196,6 +199,7 @@ public class ParserFuzzTests
             {
                 Assert.Fail($"Verify threw {ex.GetType().Name}: {ex.Message}");
             }
+#pragma warning restore PQH004
         }
     }
 
