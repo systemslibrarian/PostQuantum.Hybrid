@@ -1,4 +1,14 @@
 #nullable enable
+PostQuantum.Hybrid.HybridKemEncapsulationResult.Secret.get -> PostQuantum.Hybrid.HybridSharedSecret
+PostQuantum.Hybrid.HybridSharedSecret
+PostQuantum.Hybrid.HybridSharedSecret.AsSpan() -> System.ReadOnlySpan<byte>
+PostQuantum.Hybrid.HybridSharedSecret.Clear() -> void
+PostQuantum.Hybrid.HybridSharedSecret.CopyTo(System.Span<byte> destination) -> void
+PostQuantum.Hybrid.HybridSharedSecret.HybridSharedSecret() -> void
+PostQuantum.Hybrid.HybridSharedSecret.IsEmpty.get -> bool
+PostQuantum.Hybrid.HybridSharedSecret.Length.get -> int
+PostQuantum.Hybrid.HybridSharedSecret.ToArray() -> byte[]!
+static PostQuantum.Hybrid.HybridSharedSecret.implicit operator System.ReadOnlySpan<byte>(PostQuantum.Hybrid.HybridSharedSecret secret) -> System.ReadOnlySpan<byte>
 PostQuantum.Hybrid.HybridKeyParseException
 PostQuantum.Hybrid.HybridKeyParseException.HybridKeyParseException(PostQuantum.Hybrid.HybridFailureReason reason, string! message) -> void
 PostQuantum.Hybrid.HybridKeyParseException.HybridKeyParseException(PostQuantum.Hybrid.HybridFailureReason reason, string! message, System.Exception! innerException) -> void

@@ -63,7 +63,7 @@ public static class HybridKem
         var ephemeralPriv = (X25519PrivateKeyParameters)ephemeralPair.Private;
         var ephemeralPub = (X25519PublicKeyParameters)ephemeralPair.Public;
 
-        var recipientPub = new X25519PublicKeyParameters(publicKey.ClassicalKeySpan.ToArray(), 0);
+        var recipientPub = new X25519PublicKeyParameters(publicKey.ClassicalKeySpan);
         var agreement = new X25519Agreement();
         agreement.Init(ephemeralPriv);
         var classicalSecret = new byte[agreement.AgreementSize];
@@ -98,21 +98,17 @@ public static class HybridKem
         EnsureSupported(privateKey.Algorithm);
 
         // Classical: X25519 agreement between recipient private and ephemeral public.
-        // Materialize the recipient's seed into a local buffer we can zero
-        // in a finally block.
-        var classicalSeed = privateKey.ClassicalKeySpan.ToArray();
+        // Materialize the recipient's seed into a SecureBuffer that zeroes
+        // itself on scope exit, even if the agreement throws.
         var classicalSecret = new byte[AlgorithmSizes.X25519SharedSecretBytes];
-        try
+        using (var classicalSeed = new SecureBuffer(privateKey.ClassicalKeySpan.Length))
         {
-            var recipientPriv = new X25519PrivateKeyParameters(classicalSeed, 0);
-            var ephemeralPub = new X25519PublicKeyParameters(ciphertext.ClassicalSpan.ToArray(), 0);
+            privateKey.ClassicalKeySpan.CopyTo(classicalSeed.Span);
+            var recipientPriv = new X25519PrivateKeyParameters(classicalSeed.ReadOnlySpan);
+            var ephemeralPub = new X25519PublicKeyParameters(ciphertext.ClassicalSpan);
             var agreement = new X25519Agreement();
             agreement.Init(recipientPriv);
             agreement.CalculateAgreement(ephemeralPub, classicalSecret, 0);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(classicalSeed);
         }
 
         // Post-quantum: ML-KEM decapsulate. Implicit rejection means malformed
