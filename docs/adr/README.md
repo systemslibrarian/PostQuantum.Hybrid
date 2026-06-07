@@ -16,5 +16,6 @@ options considered, what we picked, and why.
 | [0009](0009-envelopes-package.md) | `PostQuantum.Hybrid.Envelopes` as a separate package |
 | [0010](0010-aspnetcore-key-rotation.md) | AspNetCore key rotation via `FileSystemWatcher` |
 | [0011](0011-typed-exception-taxonomy.md) | Typed `PostQuantumHybridException` with `HybridFailureReason` enum |
+| [0012](0012-runtime-backend-fallback.md) | Runtime fallback to BouncyCastle when native ML-KEM/ML-DSA is unavailable |
 
 Status legend: **Accepted** • **Superseded** • **Deprecated**

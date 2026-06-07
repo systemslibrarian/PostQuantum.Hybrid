@@ -143,14 +143,18 @@ running the harness.
 **Plan:** Stand up a long-running fuzz worker (separate from CI) and
 publish discovered corpus inputs back to the repo's seed corpus.
 
-### Mutation testing CI shipped, regression gate not yet
+### Mutation testing CI shipped with fixed threshold gate
 
 **State:** `.github/workflows/mutation.yml` runs Stryker weekly and
-uploads HTML/JSON reports as artifacts. The workflow does not yet
-fail on survival-rate regression past a fixed threshold.
+uploads HTML/JSON reports as artifacts. `stryker-config.json` sets
+`thresholds.break = 70`, so the workflow fails when the mutation score
+drops below 70% — the regression gate is wired with a fixed bound.
+Per-PR baseline-comparison ("worse than last main run") is **not** in
+place; we rely on the absolute threshold instead.
 
-**Plan:** Wire the regression gate once we have a few weeks of
-baseline data.
+**Plan:** Tighten the threshold as the score climbs (today's score is
+the floor we keep raising). Optionally add a per-PR baseline diff if
+the fixed-threshold approach proves too coarse.
 
 ### Benchmark baseline + comparison shipped, Linux baseline pending
 
@@ -183,11 +187,12 @@ package on release and attaches them as release assets.
 **No follow-up required for v1.0.**
 (v1.x.)
 
-### No API baseline checking
+### API baseline checking shipped
 
-**State:** A renamed or removed public type would only be caught by
-human PR review. There is no `Microsoft.CodeAnalysis.PublicApiAnalyzers`
-configuration.
+**State:** `Microsoft.CodeAnalysis.PublicApiAnalyzers` is wired into
+`src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj` and the public
+surface is locked in `src/PostQuantum.Hybrid/PublicAPI.Shipped.txt` /
+`PublicAPI.Unshipped.txt`. Renaming, removing, or adding a public type
+is now a build-time error until the appropriate API file is updated.
 
-**Plan:** Add `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` and
-the analyzer. (v1.x.)
+**No follow-up required for v1.0.**

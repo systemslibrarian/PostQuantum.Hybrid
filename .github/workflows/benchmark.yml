@@ -56,4 +56,9 @@ jobs:
           pwsh tools/compare-benchmarks.ps1 `
             -ResultsGlob 'benchmarks/PostQuantum.Hybrid.Benchmarks/BenchmarkDotNet.Artifacts/results/*-report-full.json' `
             -Baseline 'benchmarks/baseline-net10.0-windows.json'
-        continue-on-error: true   # Linux numbers differ from the Windows baseline; flag without blocking until we add a per-OS baseline.
+        # Linux comparison stays informational until a Linux baseline is captured.
+        # Two reasons it differs from Windows: (1) different hardware tier on the
+        # GH runner, (2) per ADR 0012, .NET 10 on Linux falls back to BouncyCastle
+        # because OpenSSL on Ubuntu 24.04 does not yet expose ML-KEM/ML-DSA. The
+        # BC path is measurably slower than the native CNG path Windows uses.
+        continue-on-error: true

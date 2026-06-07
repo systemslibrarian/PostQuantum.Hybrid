@@ -11,10 +11,34 @@ shared secrets and signatures remain secure as long as **either** primitive
 holds — defense in depth against both today's attackers and tomorrow's quantum
 adversaries.
 
+For .NET developers who need quantum-resistant key exchange and signatures
+without becoming cryptography experts.
+
 - **Targets:** .NET 8 and .NET 10
 - **Backends:** native `System.Security.Cryptography.MLKem` / `MLDsa` on .NET 10;
   BouncyCastle on .NET 8. Wire-compatible across both.
 - **Dependencies:** `BouncyCastle.Cryptography` only.
+
+## Why PostQuantum.Hybrid?
+
+- **Safe by default.** Every private-key and encapsulation type is
+  `IDisposable` and zeros its buffers on dispose. Roslyn analyzers
+  **PQH001–PQH005** catch the common misuses — undisposed sensitive
+  types, raw shared secrets used as keys, decapsulating before verifying,
+  ignored `Verify` results, AEAD without KEM-ciphertext binding — at
+  build time, with code-fixes for the mechanical ones.
+- **Honest about limits.** [`KNOWN-GAPS.md`](KNOWN-GAPS.md),
+  [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md), and
+  [`docs/adr/`](docs/adr/) state exactly what the library does, does
+  not do, and why.
+- **Versioned wire format.** Algorithm-id byte + fixed sizes means new
+  combinations can be added later without breaking existing artifacts
+  (see [`docs/SPEC.md`](docs/SPEC.md)).
+- **Same blob on .NET 8 and .NET 10.** Native BCL primitives on .NET 10,
+  BouncyCastle fallback on .NET 8 — wire-compatible either direction.
+- **One library, one ecosystem.** `Envelopes` for `Seal`/`Open`,
+  `AspNetCore` for DI + key rotation + `IDataProtector`, `TestingSupport`
+  for downstream test suites, and `Templates` for `dotnet new` scaffolds.
 
 ## Algorithms
 

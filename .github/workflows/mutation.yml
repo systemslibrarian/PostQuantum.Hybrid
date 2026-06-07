@@ -30,6 +30,9 @@ jobs:
           dotnet build PostQuantum.Hybrid.slnx --configuration Release --no-restore
 
       - name: Run Stryker
+        # stryker-config.json sets thresholds.break = 70: the dotnet stryker
+        # command exits non-zero (and so the workflow fails) when the mutation
+        # score drops below 70%. That is our regression gate.
         working-directory: src/PostQuantum.Hybrid
         run: dotnet stryker --reporter "json" --reporter "html" --reporter "progress"
 

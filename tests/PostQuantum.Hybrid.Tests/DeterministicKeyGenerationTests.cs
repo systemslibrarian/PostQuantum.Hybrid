@@ -58,6 +58,15 @@ public class DeterministicKeyGenerationTests
     [Fact]
     public void MlKem768_FromSeed_BackendsAgreeOnPublicKey()
     {
+        // Gate on actual native availability: on Linux distros whose OpenSSL
+        // doesn't ship ML-KEM, MLKem.IsSupported is false and the library
+        // transparently uses BouncyCastle for both backends — there is nothing
+        // to cross-check.
+        if (!MLKem.IsSupported)
+        {
+            return;
+        }
+
         // BC backend.
         var bcPriv = MLKemPrivateKeyParameters.FromSeed(MLKemParameters.ml_kem_768, MlKemSeed);
         var bcPub = bcPriv.GetPublicKey().GetEncoded();
@@ -72,6 +81,11 @@ public class DeterministicKeyGenerationTests
     [Fact]
     public void MlDsa65_FromSeed_BackendsAgreeOnPublicKey()
     {
+        if (!MLDsa.IsSupported)
+        {
+            return;
+        }
+
         var bcPriv = MLDsaPrivateKeyParameters.FromSeed(MLDsaParameters.ml_dsa_65, MlDsaSeed);
         var bcPub = bcPriv.GetPublicKey().GetEncoded();
 

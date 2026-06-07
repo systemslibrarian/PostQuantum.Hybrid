@@ -5,6 +5,34 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.0.0] — Unreleased
 
+### Changed — backend selection (ship-blocker fix)
+- **`MlKemBackend` and `MlDsaBackend` now fall back to BouncyCastle at
+  runtime when the native .NET 10 `MLKem.IsSupported` / `MLDsa.IsSupported`
+  returns `false`.** This makes the library work on `.NET 10` on Linux
+  distributions whose OpenSSL does not (yet) ship ML-KEM/ML-DSA — most
+  notably Ubuntu 24.04, the default GitHub Actions Linux runner. Before
+  this fix, ~78 of 89 unit tests failed on Linux + `.NET 10`.
+  See [ADR 0012](docs/adr/0012-runtime-backend-fallback.md). Wire format
+  and public API are unchanged.
+- `HybridKem.EnsureSupported` / `HybridSignature.EnsureSupported` no
+  longer throw `PostQuantumHybridException(PrimitiveNotSupported)`; the
+  fallback path always succeeds.
+
+### Fixed
+- `ParserFuzzTests.AssertOnlyExpectedExceptions` now allows
+  `PostQuantumHybridException` (introduced in the Tier 4 typed exception
+  taxonomy). The fuzz suite had been red on every CI run since that
+  taxonomy shipped.
+
+### Added — analyzer code-fixes
+- Code-fix providers for **PQH002**
+  (`HkdfWrapSharedSecretCodeFix` — wraps a raw `SharedSecret` arg with
+  `HKDF.DeriveKey(...)`), **PQH003**
+  (`MoveVerifyBeforeDecapsulateCodeFix` — reorders verify before
+  decapsulate), and **PQH005**
+  (`AddAssociatedDataCodeFix` — adds `associatedData:` arg with auto-
+  discovery of the KEM ciphertext expression in scope).
+
 ### Added — library (`PostQuantum.Hybrid`)
 - Hybrid KEM (`HybridKem`) combining **X25519 + ML-KEM-768** with an
   HKDF-SHA256 combiner that binds both ciphertexts into the derived

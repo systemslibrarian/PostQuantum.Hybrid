@@ -27,10 +27,14 @@ publicly yet). **No other dependencies.**
   available; use BouncyCastle for the gaps (X25519, Ed25519, and the .NET 8
   ML-KEM/ML-DSA fallback). Any hand-written curve or field arithmetic is a
   hard no.
-- **Native BCL first.** Always prefer `System.Security.Cryptography` when the
-  TFM exposes it. The backend abstractions in
-  `src/PostQuantum.Hybrid/Internal/Ml{Kem,Dsa}Backend.cs` enforce this with
-  `#if NET10_0_OR_GREATER`.
+- **Native BCL first when it actually works.** Prefer
+  `System.Security.Cryptography` when the runtime *and* the underlying OS
+  expose the primitive. The backend abstractions in
+  `src/PostQuantum.Hybrid/Internal/Ml{Kem,Dsa}Backend.cs` check
+  `MLKem.IsSupported` / `MLDsa.IsSupported` at runtime on .NET 10 and
+  transparently fall back to BouncyCastle when those are `false` (e.g.
+  Ubuntu 24.04's OpenSSL 3.0 does not ship ML-KEM/ML-DSA). See
+  [ADR 0012](docs/adr/0012-runtime-backend-fallback.md).
 - **Keep the surface small.** No speculative features. One combination per
   family (`X25519MlKem768`, `Ed25519MlDsa65`) in v1. Add new combinations only
   when there is a concrete user need *and* a new algorithm-id byte.

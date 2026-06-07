@@ -126,11 +126,8 @@ public static class HybridSignature
                 HybridFailureReason.UnsupportedAlgorithmId,
                 $"Unsupported hybrid signature algorithm: {algorithm}.");
         }
-        if (!MlDsaBackend.IsSupported)
-        {
-            throw new PostQuantumHybridException(
-                HybridFailureReason.PrimitiveNotSupported,
-                "ML-DSA is not supported on this platform.");
-        }
+        // ML-DSA is always available via the BouncyCastle fallback; MlDsaBackend
+        // prefers the native .NET 10 implementation when MLDsa.IsSupported is true
+        // and otherwise transparently uses BouncyCastle.
     }
 }

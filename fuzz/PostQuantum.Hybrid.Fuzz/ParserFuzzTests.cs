@@ -7,7 +7,9 @@ namespace PostQuantum.Hybrid.Fuzz;
 /// Targeted property-style fuzzing for the library's parsers. Each test
 /// drives N randomly-generated or mutated inputs through an import/parse
 /// API and asserts the *only* possible failure modes are clean exceptions
-/// (CryptographicException, FormatException, ArgumentNullException).
+/// from the library's typed taxonomy (PostQuantumHybridException) or the
+/// standard parser exceptions it wraps (CryptographicException,
+/// FormatException, ArgumentNullException, ArgumentOutOfRangeException).
 /// Any other exception type indicates an unhandled parser bug.
 ///
 /// Seeds are deterministic so failures are reproducible.
@@ -18,6 +20,7 @@ public class ParserFuzzTests
 
     private static readonly Type[] ExpectedExceptionTypes =
     [
+        typeof(PostQuantumHybridException),
         typeof(CryptographicException),
         typeof(FormatException),
         typeof(ArgumentNullException),

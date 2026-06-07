@@ -139,11 +139,8 @@ public static class HybridKem
                 HybridFailureReason.UnsupportedAlgorithmId,
                 $"Unsupported hybrid KEM algorithm: {algorithm}.");
         }
-        if (!MlKemBackend.IsSupported)
-        {
-            throw new PostQuantumHybridException(
-                HybridFailureReason.PrimitiveNotSupported,
-                "ML-KEM is not supported on this platform.");
-        }
+        // ML-KEM is always available via the BouncyCastle fallback; MlKemBackend
+        // prefers the native .NET 10 implementation when MLKem.IsSupported is true
+        // and otherwise transparently uses BouncyCastle.
     }
 }
