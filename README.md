@@ -246,6 +246,7 @@ benchmarks/PostQuantum.Hybrid.Benchmarks/     BenchmarkDotNet suite
 samples/                                      7 focused demos (incl. LargeFileEncryption)
 templates/                                    3 dotnet new templates
 docs/                                         spec, design, ADRs, threat model, perf
+scripts/                                      consumer tools (like the downstream hardening audit script)
 tools/                                        repo maintenance scripts
 .github/                                      CI, CodeQL, release, SBOM, mutation, bench
 ```

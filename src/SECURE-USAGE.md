@@ -146,14 +146,25 @@ differs from the sender's, and downstream AEAD `Decrypt` will throw
 authentication signal** for the KEM ciphertext, not the absence of an
 exception from `Decapsulate`.
 
-## 8. Always run on a runtime that supports your TFM
+## 8. Always know which backend your runtime is using
 
-- **net10.0** users: ML-KEM and ML-DSA come from the BCL natively. On
-  Linux, this requires OpenSSL 3.5+; on Windows/macOS the .NET runtime
-  ships everything. Test `MLKem.IsSupported` at startup as a health
-  check.
-- **net8.0** users: ML-KEM and ML-DSA come from BouncyCastle, which
-  runs everywhere .NET 8 runs. No platform dependencies.
+- **net10.0** users: the library prefers the native BCL
+  `System.Security.Cryptography.MLKem` / `MLDsa` implementation when
+  `MLKem.IsSupported` / `MLDsa.IsSupported` are true, and otherwise
+  transparently falls back to BouncyCastle. The public API and wire
+  format stay the same either way.
+- **net8.0** users: ML-KEM and ML-DSA come from BouncyCastle on every
+  platform.
+- **If you require the native .NET 10 backend** for policy,
+  certification, or performance reasons, probe
+  `System.Security.Cryptography.MLKem.IsSupported` and
+  `System.Security.Cryptography.MLDsa.IsSupported` at startup and fail
+  closed when either is false. Do not assume ".NET 10 installed"
+  implies "native PQ available on this machine."
+- **Your readiness check should exercise real crypto, not just inspect a
+  flag.** A startup smoke test that loads keys, signs and verifies, and
+  encapsulates and decapsulates tells you more than a support probe by
+  itself.
 
 ## 9. Always document which algorithm your system uses
 
