@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore + build
+        run: |
+          dotnet restore PostQuantum.Hybrid.slnx
+          dotnet build PostQuantum.Hybrid.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test PostQuantum.Hybrid.slnx --configuration Release --no-build
+
+      - name: Pack
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          dotnet pack src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj \
+            --configuration Release \
+            -p:Version=$VERSION \
+            -p:ContinuousIntegrationBuild=true \
+            -o ./artifacts
+
+      - name: Upload artifacts to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.nupkg
+          generate_release_notes: true
+
+      - name: Publish to NuGet
+        if: env.NUGET_API_KEY != ''
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push artifacts/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

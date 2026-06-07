@@ -8,6 +8,14 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
 
+    <!-- Deterministic / source-linked builds. -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition=" '$(GITHUB_ACTIONS)' == 'true' ">true</ContinuousIntegrationBuild>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
     <IsPackable>true</IsPackable>
     <PackageId>PostQuantum.Hybrid</PackageId>
     <Version>1.0.0</Version>
@@ -16,12 +24,14 @@
     <PackageTags>cryptography;post-quantum;pqc;ml-kem;ml-dsa;kyber;dilithium;x25519;ed25519;hybrid</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/systemslibrarian/PostQuantum.Hybrid</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/PostQuantum.Hybrid</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

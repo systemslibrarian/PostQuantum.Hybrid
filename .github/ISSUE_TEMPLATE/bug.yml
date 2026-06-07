@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a defect in PostQuantum.Hybrid
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. For suspected **security** vulnerabilities,
+        please follow [SECURITY.md](https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/SECURITY.md)
+        instead of opening a public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: tfm
+    attributes:
+      label: Target framework
+      options:
+        - net8.0
+        - net10.0
+        - other (specify below)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      placeholder: "Windows 11 26200 / Ubuntu 22.04 / macOS 14"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A self-contained code snippet that triggers the bug.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Stack traces, logs, additional context.

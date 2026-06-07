@@ -1,0 +1,11 @@
+# Default reviewer for everything
+*       @systemslibrarian
+
+# Cryptographic code requires extra scrutiny.
+/src/PostQuantum.Hybrid/HybridKem.cs            @systemslibrarian
+/src/PostQuantum.Hybrid/HybridSignature.cs      @systemslibrarian
+/src/PostQuantum.Hybrid/Internal/               @systemslibrarian
+/docs/SPEC.md                                   @systemslibrarian
+/docs/THREAT-MODEL.md                           @systemslibrarian
+/docs/adr/                                      @systemslibrarian
+/SECURITY.md                                    @systemslibrarian

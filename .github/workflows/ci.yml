@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build + test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8 + .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Show SDKs
+        run: dotnet --list-sdks
+
+      - name: Restore
+        run: dotnet restore PostQuantum.Hybrid.slnx
+
+      - name: Build
+        run: dotnet build PostQuantum.Hybrid.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test PostQuantum.Hybrid.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/
+
+  vulnerable-packages:
+    name: vulnerable-packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: List vulnerable packages
+        run: |
+          dotnet restore PostQuantum.Hybrid.slnx
+          dotnet list PostQuantum.Hybrid.slnx package --vulnerable --include-transitive
+
+  pack:
+    name: pack
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Pack
+        run: dotnet pack src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj --configuration Release -o ./artifacts
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg

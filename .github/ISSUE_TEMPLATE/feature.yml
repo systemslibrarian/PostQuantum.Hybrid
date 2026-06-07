@@ -1,0 +1,28 @@
+name: Feature request
+description: Propose an enhancement to PostQuantum.Hybrid
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the use case and the friction you're hitting today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Optional. If you have a concrete API or design in mind, sketch it.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This is about **primitives** (the hybrid KEM or signature construction itself), not a protocol or framework wrapper.
+        - label: This would not require breaking the v1 wire format.
+        - label: I have read [KNOWN-GAPS.md](https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/KNOWN-GAPS.md).
