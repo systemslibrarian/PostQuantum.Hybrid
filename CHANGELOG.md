@@ -5,6 +5,26 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — WebApiDemo gold-standard playground (Phase 6: deploy + verify)
+- Rolled `pqhybrid-webapidemo` Azure Container App to revision
+  `--phase5` (image `pqhybriddemoacr.azurecr.io/pqhybrid-webapidemo:phase5`).
+- Verified end-to-end on
+  `https://demo.pqhybrid.systemslibrarian.dev/`: all section markers
+  (hero, Why hybrid, demo tabs, rotation, all five PQH analyzer cards,
+  code snippets, install matrix) render in a 32 KB single page; the
+  `/api/backend` endpoint reports `native .NET 10 (...MLKem)` on Azure
+  Linux 3.0 (OpenSSL 3.6.2 exercises the native ML-KEM / ML-DSA path);
+  `/_blazor/negotiate` returns 200 with a `connectionToken` so the
+  interactive components will wire up; `/swagger` still serves the
+  REST surface.
+- Caught and fixed mid-deploy: the `samples/WebApiDemo/Dockerfile`
+  COPY block did not include `src/PostQuantum.Hybrid.Envelopes/`,
+  which the Phase 1 csproj newly references. Local `dotnet build`
+  succeeded because the full source tree is on disk; only the
+  containerized build saw the omission (CS0234 from ACR run `ca3`).
+  Followup: any new sample-only ProjectReference into another src/
+  project needs a matching `COPY` in the Dockerfile.
+
 ### Added — WebApiDemo gold-standard playground (Phase 5: code samples + install)
 - `Components/CopyableCode.razor` — reusable snippet card with a
   one-click copy button. Static JS handler in `App.razor` calls
