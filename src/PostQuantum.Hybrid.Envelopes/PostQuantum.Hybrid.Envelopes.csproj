@@ -17,7 +17,7 @@
 
     <IsPackable>true</IsPackable>
     <PackageId>PostQuantum.Hybrid.Envelopes</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Paul Clark</Authors>
     <Description>Opinionated, misuse-resistant message envelopes for PostQuantum.Hybrid. HybridEnvelope.Seal / Open wrap KEM + HKDF + AES-GCM into one call; SignedHybridEnvelope.Seal / Open add hybrid authentication on top.</Description>
     <PackageTags>cryptography;post-quantum;pqc;envelope;encryption;hybrid;PostQuantum.Hybrid</PackageTags>

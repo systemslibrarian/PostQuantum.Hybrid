@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-06-08
+
 ### Security — secrets removed from ACR build context
 - `.dockerignore` now excludes `**/*.key`, `**/*.key.txt`, `**/Nuget*.key*`,
   `**/Marketplace*.key*`, `**/*.pfx`, `**/*.snk`, `**/*.pem`, and

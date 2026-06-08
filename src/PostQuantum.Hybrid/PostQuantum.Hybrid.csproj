@@ -18,7 +18,7 @@
 
     <IsPackable>true</IsPackable>
     <PackageId>PostQuantum.Hybrid</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Paul Clark</Authors>
     <Description>High-level hybrid post-quantum cryptography for .NET 8 and .NET 10. Combines classical primitives (X25519, Ed25519) with NIST-standardized post-quantum algorithms (ML-KEM-768, ML-DSA-65) for hybrid key encapsulation and digital signatures. Uses native .NET 10 cryptography when available; falls back to BouncyCastle on .NET 8.</Description>
     <PackageTags>cryptography;post-quantum;pqc;ml-kem;ml-dsa;kyber;dilithium;x25519;ed25519;hybrid</PackageTags>
