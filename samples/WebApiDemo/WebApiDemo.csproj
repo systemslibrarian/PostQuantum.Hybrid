@@ -10,14 +10,19 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PostQuantum.Hybrid\PostQuantum.Hybrid.csproj" />
     <ProjectReference Include="..\..\src\PostQuantum.Hybrid.AspNetCore\PostQuantum.Hybrid.AspNetCore.csproj" />
+    <!--
+      The playground leads with the recommended high-level API:
+      HybridEnvelope.Seal / Open. The library remains dependency-free;
+      this is a sample-only reference.
+    -->
+    <ProjectReference Include="..\..\src\PostQuantum.Hybrid.Envelopes\PostQuantum.Hybrid.Envelopes.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      Swagger UI is the demo's interactive front door: the deployed URL
-      renders a clickable page where users can hit /seal, /sign, and the
-      public-key endpoints without writing curl. The library has no
-      dependencies on Swashbuckle — only this sample does.
+      Swagger is no longer the demo's front door — Blazor Server renders
+      the interactive playground at the site root. Swagger stays mounted
+      at /swagger as a complementary API discovery surface for curl users.
     -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
   </ItemGroup>

@@ -1,0 +1,26 @@
+@*
+    Root document for the Blazor Server playground. Single-page UI with
+    anchor-link navigation — there is only one "page" (Home.razor); the
+    Router still gates on @page directives so future expansion remains
+    cheap.
+*@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>PostQuantum.Hybrid — interactive demo</title>
+    <meta name="description" content="Gold-standard reference implementation for the PostQuantum.Hybrid .NET library. Hybrid KEM (X25519 + ML-KEM-768) and hybrid signatures (Ed25519 + ML-DSA-65) demonstrated end-to-end in your browser." />
+    <link rel="stylesheet" href="app.css" />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

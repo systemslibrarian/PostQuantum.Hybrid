@@ -1,0 +1,170 @@
+@*
+    PostQuantum.Hybrid playground — single page, anchor-link navigation.
+    Phase 1 ships hero + "Why hybrid?" + backend transparency badge. Later
+    phases fill in Live Demo, Rotation, Security Hygiene, Code, and Install.
+*@
+
+@page "/"
+@rendermode RenderMode.InteractiveServer
+@inject BackendInfoService Backend
+
+<PageTitle>PostQuantum.Hybrid — interactive demo</PageTitle>
+
+<header class="site-header">
+    <div class="container header-inner">
+        <a class="brand" href="#top">
+            <span class="brand-name">PostQuantum.Hybrid</span>
+            <span class="brand-tag">interactive demo</span>
+        </a>
+        <div class="backend-badge @(Backend.NativePqAvailable ? "badge-native" : "badge-fallback")"
+             title="@Backend.DetailedLabel">
+            Backend: <strong>@Backend.ShortLabel</strong>
+        </div>
+    </div>
+</header>
+
+<main id="top" class="container">
+
+    <section class="hero">
+        <h1>Hybrid post-quantum cryptography for .NET — in your browser.</h1>
+        <p class="hero-sub">
+            This page is the gold-standard reference for
+            <a href="https://www.nuget.org/packages/PostQuantum.Hybrid">PostQuantum.Hybrid</a>.
+            It leads with the <strong>recommended</strong> high-level API
+            (<code>HybridEnvelope.Seal</code> / <code>Open</code>), then peels
+            back the layers so you can see what production code should — and
+            should not — look like.
+        </p>
+        <nav class="anchor-nav" aria-label="Page sections">
+            <a href="#why">Why hybrid?</a>
+            <a href="#demo">Live demo</a>
+            <a href="#rotation">Key rotation</a>
+            <a href="#hygiene">Security hygiene</a>
+            <a href="#copy">Code you can copy</a>
+            <a href="#install">Use this in your project</a>
+        </nav>
+        <p class="hero-meta">
+            Native .NET 10 cryptography when supported by the host's OpenSSL;
+            BouncyCastle fallback otherwise (see
+            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/docs/adr/0012-runtime-backend-fallback.md">ADR&nbsp;0012</a>).
+            This container reports <strong>@Backend.ShortLabel</strong>.
+        </p>
+    </section>
+
+    <section id="why" class="band">
+        <h2>Why hybrid?</h2>
+        <p>
+            Today's TLS protects key exchange with elliptic-curve Diffie-Hellman
+            (X25519) and authentication with Ed25519 signatures. Both are safe
+            against the attackers we actually have — but a sufficiently large
+            quantum computer would break both in polynomial time (Shor's
+            algorithm). NIST's <strong>ML-KEM-768</strong> (FIPS&nbsp;203) and
+            <strong>ML-DSA-65</strong> (FIPS&nbsp;204) are post-quantum
+            replacements that no known quantum algorithm breaks — but they are
+            new, and the cryptographic community has had decades to scrutinize
+            X25519 / Ed25519 that ML-KEM and ML-DSA have not yet had.
+        </p>
+        <p>
+            <strong>Hybrid construction</strong> sidesteps that asymmetry of
+            confidence. PostQuantum.Hybrid runs both primitives in parallel and
+            combines their outputs so the resulting shared secret (or
+            signature) is safe as long as <em>either</em> primitive holds:
+        </p>
+        <div class="primitives">
+            <div class="primitive">
+                <h3>Hybrid KEM</h3>
+                <p class="primitive-formula">X25519&nbsp;+&nbsp;ML-KEM-768</p>
+                <p class="primitive-detail">
+                    Two key encapsulations run side by side. The classical and
+                    post-quantum shared secrets are mixed through HKDF-SHA256
+                    with the KEM ciphertexts bound into the transcript, so an
+                    attacker breaking just one primitive learns nothing.
+                </p>
+            </div>
+            <div class="primitive">
+                <h3>Hybrid signatures</h3>
+                <p class="primitive-formula">Ed25519&nbsp;+&nbsp;ML-DSA-65</p>
+                <p class="primitive-detail">
+                    Two signatures are concatenated and BOTH must verify. A
+                    forger needs to defeat both schemes simultaneously, which
+                    is strictly harder than defeating either one alone.
+                </p>
+            </div>
+        </div>
+        <p>
+            The library is fail-closed: every parse, verify, and decapsulate
+            failure throws or returns <code>false</code>. There is no silent
+            fallback to "best effort" mode. ML-KEM uses FIPS-203 implicit
+            rejection, which means malformed ciphertexts yield a pseudorandom
+            shared secret — the combined hybrid secret then diverges and the
+            downstream AEAD authentically rejects.
+        </p>
+    </section>
+
+    <section id="demo" class="band">
+        <h2>Live demo</h2>
+        <p class="placeholder">
+            Interactive seal / open / sign / verify with Recommended,
+            Intermediate, and Advanced tabs lands in Phase&nbsp;2. Today the
+            REST surface is already wired through the recommended path — try
+            the <a href="/swagger" target="_blank" rel="noopener">REST API at
+            /swagger</a> or hit
+            <code>POST&nbsp;/seal</code> directly.
+        </p>
+    </section>
+
+    <section id="rotation" class="band">
+        <h2>Key rotation</h2>
+        <p class="placeholder">
+            Live <code>IRotatingHybridKemKeyProvider</code> visualization
+            lands in Phase&nbsp;3. See
+            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/tree/main/samples/KeyRotationDemo"><code>samples/KeyRotationDemo</code></a>
+            for the runnable script in the meantime.
+        </p>
+    </section>
+
+    <section id="hygiene" class="band">
+        <h2>Security hygiene</h2>
+        <p class="placeholder">
+            Live PQH001–PQH005 analyzer diagnostics from a deliberately-broken
+            companion project land in Phase&nbsp;4.
+        </p>
+    </section>
+
+    <section id="copy" class="band">
+        <h2>Code you can copy</h2>
+        <p class="placeholder">
+            Polished snippets + copy buttons land in Phase&nbsp;5. For now,
+            grab them from
+            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/tree/main/samples/EnvelopesDemo"><code>samples/EnvelopesDemo</code></a>.
+        </p>
+    </section>
+
+    <section id="install" class="band">
+        <h2>Use this in your project</h2>
+        <p class="placeholder">
+            Install commands, template references, and the "which package?"
+            matrix land in Phase&nbsp;5.
+        </p>
+        <pre class="code">dotnet add package PostQuantum.Hybrid
+dotnet add package PostQuantum.Hybrid.Envelopes
+dotnet add package PostQuantum.Hybrid.Analyzers</pre>
+    </section>
+
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-inner">
+        <p>
+            Source:
+            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid">github.com/systemslibrarian/PostQuantum.Hybrid</a>
+            · This page:
+            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/tree/main/samples/WebApiDemo">samples/WebApiDemo</a>
+        </p>
+        <p class="cold-start">
+            Hosted scale-to-zero on Azure Container Apps. First request after
+            idle can take up to a minute to wake — reload if needed.
+        </p>
+        <p class="doxology"><em>To God be the glory — 1 Corinthians 10:31.</em></p>
+    </div>
+</footer>

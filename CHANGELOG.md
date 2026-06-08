@@ -5,6 +5,28 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — WebApiDemo gold-standard playground (Phase 1: foundation)
+- `samples/WebApiDemo` migrates from Minimal API + Swagger-at-root to
+  **Blazor Server** hosting an interactive single-page playground at
+  the site root. Swagger moves to `/swagger`; the JSON endpoints
+  (`/pub/*`, `/seal`, `/sign`) stay intact for curl users.
+- New `BackendInfoService` captures `MLKem.IsSupported` /
+  `MLDsa.IsSupported` at startup; the playground header renders a live
+  badge ("native .NET 10" vs "BouncyCastle fallback") so visitors see
+  which backend the running container resolved per ADR 0012. New
+  `GET /api/backend` exposes the same info as JSON.
+- `POST /seal` now uses the **recommended high-level API**
+  (`HybridEnvelope.Seal`) instead of the hand-rolled HKDF + AES-GCM
+  pipeline it shipped with. Response payload includes the envelope
+  byte length and `HybridEnvelope.OverheadBytes` for transparency.
+- New `PostQuantum.Hybrid.Envelopes` ProjectReference on the sample
+  (library remains dependency-free).
+- Phase 1 visible content: hero with anchor-link nav, "Why hybrid?"
+  section explaining the X25519+ML-KEM-768 and Ed25519+ML-DSA-65
+  constructions, placeholders for the live demo, key rotation,
+  security hygiene, code-you-can-copy, and install sections (phases 2
+  through 5).
+
 ### Added — containerized WebApiDemo + Azure deploy scaffolding
 - `samples/WebApiDemo/Dockerfile` — multi-stage build on
   `mcr.microsoft.com/dotnet/sdk:10.0-azurelinux3.0` with a conda-forge

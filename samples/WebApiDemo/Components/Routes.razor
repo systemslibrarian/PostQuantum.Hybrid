@@ -1,0 +1,11 @@
+@*
+    Single-page playground. The Router is kept so adding a second @page
+    later stays cheap — but for v1 there is only Home.razor at "/".
+*@
+
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+</Router>
