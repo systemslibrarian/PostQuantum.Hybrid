@@ -5,6 +5,31 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security — secrets removed from ACR build context
+- `.dockerignore` now excludes `**/*.key`, `**/*.key.txt`, `**/Nuget*.key*`,
+  `**/Marketplace*.key*`, `**/*.pfx`, `**/*.snk`, `**/*.pem`, and
+  `**/secrets.json` — recursively. Pre-fix, the locally-stored
+  `Nuget.key.txt` and `Marketplace.key.txt` were being uploaded into every
+  ACR build-context archive on `pqhybriddemoacr` (they never made it into
+  any running container image, but they were retained in ACR's
+  build-archive storage). Keys have been rotated; nuget.org and VS
+  Marketplace listings audited (only the legitimate `v1.0.0` and
+  `v1.1.0` publishes from 2026-06-07 present). `.dockerignore` was
+  also tightened to drop other dead weight (`docs-site/`, `TestResults/`,
+  other `samples/` subdirs, top-level markdown / slnx that the
+  Dockerfile does not COPY).
+
+### Changed — NuGet release pipeline uses Trusted Publishing
+- `.github/workflows/release.yml` now publishes to nuget.org via
+  **Trusted Publishing** (OIDC) using `NuGet/login@v1`. The
+  long-lived `NUGET_API_KEY` secret can be retired once a release
+  has succeeded under the new flow. Setup runbook:
+  [`docs/TRUSTED-PUBLISHING.md`](docs/TRUSTED-PUBLISHING.md). The
+  job runs under a new `nuget` GitHub Environment so additional
+  protection rules (required reviewers, restricted branches / tags)
+  can be added without touching workflow code.
+- `docs/RELEASE.md` updated to point at the new publish path.
+
 ### Added — WebApiDemo gold-standard playground (Phase 6: deploy + verify)
 - Rolled `pqhybrid-webapidemo` Azure Container App to revision
   `--phase5` (image `pqhybriddemoacr.azurecr.io/pqhybrid-webapidemo:phase5`).

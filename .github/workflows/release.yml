@@ -1,16 +1,31 @@
 name: Release
 
+# Triggered by pushing a v*.*.* tag. Builds, tests, packs the six packages,
+# attaches them to a GitHub release, and pushes them to nuget.org using
+# Trusted Publishing (OIDC) — no long-lived NUGET_API_KEY secret.
+#
+# Setup (one-time per maintainer): docs/TRUSTED-PUBLISHING.md.
+
 on:
   push:
     tags:
       - "v*.*.*"
 
-permissions:
-  contents: write
-
 jobs:
   release:
     runs-on: ubuntu-latest
+
+    # The "nuget" environment is where we hang environment-protection rules
+    # (required reviewers, allowed branches/tags) if we ever want to gate
+    # publishes manually. The Trusted Publishing policy on nuget.org also
+    # pins to this exact environment name, so renaming it requires updating
+    # the policy too.
+    environment: nuget
+
+    permissions:
+      contents: write   # required by softprops/action-gh-release to attach the .nupkg files
+      id-token: write   # required by NuGet/login: GitHub mints an OIDC token nuget.org will exchange for a 1-hour API key
+
     steps:
       - uses: actions/checkout@v6
         with:
@@ -54,10 +69,26 @@ jobs:
           files: artifacts/*.nupkg
           generate_release_notes: true
 
+      # ---------------------------------------------------------------
+      # Trusted Publishing: exchange the GitHub OIDC token for a
+      # 1-hour nuget.org API key. The trust policy on nuget.org pins
+      # this exchange to owner + repo + workflow filename + environment,
+      # so a fork can never authenticate.
+      #
+      # Setup runbook: docs/TRUSTED-PUBLISHING.md.
+      # ---------------------------------------------------------------
+      - name: NuGet login (OIDC -> short-lived API key)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          # Your nuget.org PROFILE NAME (not your email). Stored as a
+          # repo secret so the workflow source can be public without
+          # outing the account name to scrapers.
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Publish to NuGet
-        if: env.NUGET_API_KEY != ''
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           dotnet nuget push artifacts/*.nupkg \
             --api-key "$NUGET_API_KEY" \

@@ -33,14 +33,15 @@ git push origin v1.0.0
 The `.github/workflows/release.yml` workflow then:
 
 1. Builds and tests both target frameworks.
-2. Packs `PostQuantum.Hybrid.nupkg` with `ContinuousIntegrationBuild=true`
-   for deterministic builds and SourceLink.
-3. Attaches the `.nupkg` and `.snupkg` to a GitHub release.
-4. Pushes to NuGet.org (if the `NUGET_API_KEY` secret is configured).
-
-`PostQuantum.Hybrid.Analyzers` and `PostQuantum.Hybrid.Templates` are
-released on the same tag — the workflow will be extended to pack and
-push them too.
+2. Packs all six packages (`PostQuantum.Hybrid`, `Envelopes`, `AspNetCore`,
+   `Analyzers`, `TestingSupport`, `Templates`) with
+   `ContinuousIntegrationBuild=true` for deterministic builds and
+   SourceLink.
+3. Attaches the `.nupkg` and `.snupkg` files to a GitHub release.
+4. Pushes to NuGet.org via **Trusted Publishing** — short-lived API
+   keys minted from a GitHub OIDC token. No long-lived
+   `NUGET_API_KEY` secret. Setup runbook:
+   [`TRUSTED-PUBLISHING.md`](TRUSTED-PUBLISHING.md).
 
 ## SemVer policy
 

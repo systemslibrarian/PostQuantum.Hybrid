@@ -1,15 +1,87 @@
-# Keep the ACR build-context upload small. The WebApiDemo Dockerfile only COPYs
-# src/PostQuantum.Hybrid, src/PostQuantum.Hybrid.AspNetCore, the analyzers
-# project (injected by Directory.Build.targets), the root build files, and
-# samples/WebApiDemo. Everything else is dead weight.
+# Keep the ACR build-context upload small AND keep secrets out of it.
+#
+# The WebApiDemo Dockerfile only COPYs:
+#   - root: Directory.Build.props, Directory.Build.targets, global.json
+#   - src/PostQuantum.Hybrid, src/PostQuantum.Hybrid.Envelopes,
+#     src/PostQuantum.Hybrid.AspNetCore, src/PostQuantum.Hybrid.Analyzers
+#   - samples/Directory.Build.props, samples/WebApiDemo/
+# Everything else is dead weight — and a few things are actively dangerous
+# (secret API keys at the repo root that are .gitignored but would still
+# ship in the build-context tar if not excluded here).
+#
+# Update this file when the Dockerfile starts COPYing something new.
+
+# --- SECRETS — must never ship in the build context ---
+# These also appear in .gitignore, but .dockerignore is independent — both
+# rules must be in place to keep keys out of ACR's build-context storage.
+# Patterns are deliberately recursive (**/) so a key file in any subfolder
+# is caught too, not just at the repo root.
+**/*.key
+**/*.key.txt
+**/Nuget*.key*
+**/nuget.key*
+**/Marketplace*.key*
+**/*.pfx
+**/*.snk
+**/*.pem
+**/secrets.json
+
+# --- Build outputs and test artifacts ---
 **/bin/
 **/obj/
+**/TestResults/
+**/StrykerOutput*/
+**/CoverageReport/
+**/coverage*.xml
+**/*.binlog
+artifacts/
+
+# --- Repo machinery the Dockerfile does not need ---
 .git/
 .github/
-artifacts/
+.gitignore
+.gitattributes
+.editorconfig
+.well-known/
+.vs/
+.vscode/
+.idea/
+
+# --- Top-level directories the Dockerfile does not COPY ---
+benchmarks/
 docs/
+docs-site/
+fuzz/
+scripts/
 templates/
 tests/
-benchmarks/
-StrykerOutput/
-fuzz/
+tools/
+vscode-extension/
+
+# --- Other samples (Dockerfile only COPYs samples/Directory.Build.props
+#     and samples/WebApiDemo/) ---
+samples/BasicDemo/
+samples/EnvelopesDemo/
+samples/KemEncryption/
+samples/KeyPersistence/
+samples/KeyRotationDemo/
+samples/LargeFileEncryption/
+samples/SecureMessenger/
+samples/SignedDocument/
+samples/README.md
+
+# --- Misc files at the repo root the Dockerfile does not need ---
+# (Per-project READMEs under src/ are still copied via src/<project>/ to
+# keep PackageReadmeFile happy if anything below publish ever tries to
+# resolve them; the repo-root markdown files are dead weight here.)
+CHANGELOG.md
+CLAUDE.md
+CONTRIBUTING.md
+HARDENING-CHECKLIST.md
+KNOWN-GAPS.md
+README.md
+SECURITY.md
+LICENSE
+gem4.md
+PostQuantum.Hybrid.slnx
+stryker-config.json
