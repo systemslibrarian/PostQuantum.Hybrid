@@ -12,6 +12,10 @@
 //                                nonce, AES-GCM ct, tag).
 //   - POST /sign                 server-side hybrid signature.
 //
+// Swagger UI is mounted at the site root so the deployed URL renders a
+// clickable interactive page (Azure Container Apps users land on the UI,
+// no curl required).
+//
 // Production guidance (this sample is single-process for clarity):
 //   • The server holds the KEM private key. Clients hold the signature
 //     PUBLIC key only — they verify server-issued artifacts with it.
@@ -25,6 +29,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
 using PostQuantum.Hybrid;
 using PostQuantum.Hybrid.AspNetCore;
 
@@ -53,16 +58,49 @@ builder.Services.AddPostQuantumHybrid(options =>
     options.SignaturePrivateKeyPem = sigPrivPem;
 });
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c => c.SwaggerDoc("v1", new OpenApiInfo
+{
+    Title = "PostQuantum.Hybrid WebApiDemo",
+    Version = "v1",
+    Description =
+        "Interactive demo for the PostQuantum.Hybrid .NET library. " +
+        "GET the server's hybrid public keys, POST plaintext to /seal " +
+        "(X25519 + ML-KEM-768 + AES-256-GCM with KEM ct bound into AAD), " +
+        "POST data to /sign (Ed25519 + ML-DSA-65). " +
+        "See https://www.nuget.org/packages/PostQuantum.Hybrid.",
+}));
+
 var app = builder.Build();
 
-app.MapGet("/", () => Results.Text(
-    "PostQuantum.Hybrid WebApiDemo. See /pub/kem-public-key, /pub/sig-public-key, POST /seal, POST /sign."));
+// Mount Swagger UI at the site root so the deployed URL renders a
+// clickable page. RoutePrefix = "" replaces the default /swagger landing.
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "PostQuantum.Hybrid WebApiDemo v1");
+    c.RoutePrefix = string.Empty;
+    c.DocumentTitle = "PostQuantum.Hybrid WebApiDemo";
+});
 
 app.MapGet("/pub/kem-public-key", (IHybridKemKeyProvider keys) =>
-    Results.Text(keys.PublicKey.ExportPem(), "application/x-pem-file"));
+    Results.Text(keys.PublicKey.ExportPem(), "application/x-pem-file"))
+   .WithName("GetKemPublicKey")
+   .WithSummary("Hybrid KEM recipient public key (PEM).")
+   .WithDescription(
+       "Returns the X25519 + ML-KEM-768 hybrid public key the server uses " +
+       "for /seal. Clients can encapsulate against this key directly with " +
+       "HybridKem.Encapsulate.")
+   .WithTags("Keys");
 
 app.MapGet("/pub/sig-public-key", (IHybridSignatureKeyProvider keys) =>
-    Results.Text(keys.PublicKey.ExportPem(), "application/x-pem-file"));
+    Results.Text(keys.PublicKey.ExportPem(), "application/x-pem-file"))
+   .WithName("GetSignaturePublicKey")
+   .WithSummary("Hybrid signature public key (PEM).")
+   .WithDescription(
+       "Returns the Ed25519 + ML-DSA-65 hybrid public key. Clients verify " +
+       "/sign output against this key with HybridSignature.Verify.")
+   .WithTags("Keys");
 
 app.MapPost("/seal", ([FromBody] SealRequest req, IHybridKemKeyProvider keys) =>
 {
@@ -109,7 +147,14 @@ app.MapPost("/seal", ([FromBody] SealRequest req, IHybridKemKeyProvider keys) =>
     {
         CryptographicOperations.ZeroMemory(aesKey);
     }
-});
+})
+.WithName("Seal")
+.WithSummary("Encrypt a plaintext under the server's hybrid KEM key.")
+.WithDescription(
+    "Hybrid KEM encapsulation (X25519 + ML-KEM-768) + HKDF-SHA256 + " +
+    "AES-256-GCM, with the KEM ciphertext bound into the AEAD " +
+    "associated data so a swapped KEM ct causes decryption to fail.")
+.WithTags("Crypto");
 
 app.MapPost("/sign", ([FromBody] SignRequest req, IHybridSignatureKeyProvider keys) =>
 {
@@ -121,7 +166,14 @@ app.MapPost("/sign", ([FromBody] SignRequest req, IHybridSignatureKeyProvider ke
     var data = Encoding.UTF8.GetBytes(req.Data);
     var sig = HybridSignature.Sign(keys.PrivateKey, data);
     return Results.Json(new SignResponse(Convert.ToBase64String(sig)));
-});
+})
+.WithName("Sign")
+.WithSummary("Hybrid-sign a payload (Ed25519 + ML-DSA-65).")
+.WithDescription(
+    "Produces a hybrid signature over the supplied data. Verifying " +
+    "clients use HybridSignature.Verify with the public key from " +
+    "/pub/sig-public-key.")
+.WithTags("Crypto");
 
 app.Run();
 

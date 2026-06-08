@@ -1,0 +1,15 @@
+# Keep the ACR build-context upload small. The WebApiDemo Dockerfile only COPYs
+# src/PostQuantum.Hybrid, src/PostQuantum.Hybrid.AspNetCore, the analyzers
+# project (injected by Directory.Build.targets), the root build files, and
+# samples/WebApiDemo. Everything else is dead weight.
+**/bin/
+**/obj/
+.git/
+.github/
+artifacts/
+docs/
+templates/
+tests/
+benchmarks/
+StrykerOutput/
+fuzz/

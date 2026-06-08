@@ -30,6 +30,29 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   downloads them from `vars.NIST_KAT_MIRROR` when configured. Skips
   cleanly when neither is set.
 
+### Added — containerized WebApiDemo + Azure deploy scaffolding
+- `samples/WebApiDemo/Dockerfile` — multi-stage build on
+  `mcr.microsoft.com/dotnet/sdk:10.0-azurelinux3.0` with a conda-forge
+  OpenSSL 3.5 layer so the native .NET 10 ML-KEM / ML-DSA path is
+  exercised at runtime (the base image's OpenSSL 3.3.5 would
+  otherwise trigger the BouncyCastle fallback per ADR 0012).
+- `samples/WebApiDemo/Program.cs` mounts Swashbuckle's Swagger UI at
+  the site root so the deployed URL is browser-interactive — no curl
+  required. `Swashbuckle.AspNetCore 7.2.0` is referenced from the
+  sample only; the library itself remains dependency-free.
+- `samples/WebApiDemo/deploy.sh` — one-shot Azure Container Apps
+  bootstrap (resource group, ACR, env, container app) that uses
+  `az acr build` so Docker is not required locally, then pins
+  `min-replicas 0 / max-replicas 1` for scale-to-zero cost control.
+- `samples/WebApiDemo/DEPLOY.md` — runbook covering one-time `az`
+  setup, scripted vs. manual deploys, managed-identity hardening for
+  ACR pull, and teardown.
+- `.github/workflows/deploy-webapidemo.yml` — push-to-main CI/CD that
+  builds with ACR and updates the container app, gated on changes
+  under the demo or the library source.
+- `.dockerignore` at the repo root keeps the ACR build-context upload
+  small.
+
 ### Added — analyzer-enforced sample policy
 - `samples/Directory.Build.props` adds `PostQuantum.Hybrid.Analyzers`
   as an Analyzer-typed `ProjectReference` to every sample and turns on

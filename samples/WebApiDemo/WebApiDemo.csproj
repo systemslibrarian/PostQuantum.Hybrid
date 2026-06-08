@@ -12,4 +12,14 @@
     <ProjectReference Include="..\..\src\PostQuantum.Hybrid.AspNetCore\PostQuantum.Hybrid.AspNetCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Swagger UI is the demo's interactive front door: the deployed URL
+      renders a clickable page where users can hit /seal, /sign, and the
+      public-key endpoints without writing curl. The library has no
+      dependencies on Swashbuckle — only this sample does.
+    -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+  </ItemGroup>
+
 </Project>
