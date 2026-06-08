@@ -5,6 +5,28 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — WebApiDemo gold-standard playground (Phase 5: code samples + install)
+- `Components/CopyableCode.razor` — reusable snippet card with a
+  one-click copy button. Static JS handler in `App.razor` calls
+  `navigator.clipboard.writeText`; works regardless of Blazor render
+  mode, with an `execCommand("copy")` fallback for older browsers.
+  "Copy" → "Copied" → "Copy" feedback with brief green tint.
+- `#copy` section ships three production-shape snippets, each copyable:
+  anonymous `HybridEnvelope.Seal / Open`; signed
+  `SignedHybridEnvelope.Seal / Open` (with the verify-before-decapsulate
+  note); and the ASP.NET Core wiring with `AddPostQuantumHybrid` +
+  the `AddRotatingHybridKemKeys` alternative. Each block links back to
+  the corresponding canonical sample under `samples/`.
+- `#install` section: copyable `dotnet add package` block (base,
+  Envelopes, Analyzers, AspNetCore), copyable `dotnet new` template
+  block (`pqhybrid-app` / `pqhybrid-webapi` / `pqhybrid-envelope`),
+  and a six-row "Which package do I want?" matrix that explicitly
+  flags `Envelopes` as the default for new code and `Analyzers` as
+  "always install."
+- CSS additions: `.snippet` with dark header bar + label + copy
+  button, `.copy-btn-done` flash state, `.package-matrix` two-column
+  responsive grid. All vanilla CSS.
+
 ### Added — WebApiDemo gold-standard playground (Phase 4: analyzer demo)
 - `Services/AnalyzerCatalog.cs` — static catalog of PQH001-PQH005 with
   each rule's `DiagnosticDescriptor.Title` and `MessageFormat` text

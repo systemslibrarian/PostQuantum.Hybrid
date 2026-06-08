@@ -1,0 +1,23 @@
+@*
+    Code snippet with a one-click copy button. The button uses
+    navigator.clipboard.writeText via a tiny inline handler in App.razor.
+    No JS interop round-trip is needed; the click is a static handler so
+    it works regardless of render mode.
+*@
+
+<div class="snippet" data-language="@(Language ?? "csharp")">
+    <div class="snippet-head">
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <span class="snippet-label">@Label</span>
+        }
+        <button type="button" class="copy-btn" onclick="copyFromSnippet(this)">Copy</button>
+    </div>
+    <pre class="code"><code>@Code</code></pre>
+</div>
+
+@code {
+    [Parameter] public string Code { get; set; } = "";
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Language { get; set; }
+}

@@ -155,23 +155,168 @@
 
     <section id="copy" class="band">
         <h2>Code you can copy</h2>
-        <p class="placeholder">
-            Polished snippets + copy buttons land in Phase&nbsp;5. For now,
-            grab them from
-            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/tree/main/samples/EnvelopesDemo"><code>samples/EnvelopesDemo</code></a>.
+        <p>
+            The three patterns this page demonstrates, ready to paste. Each
+            block follows the <strong>analyzer-clean</strong> conventions —
+            <code>using</code> on every disposable, KEM ciphertext bound into
+            AAD where AES-GCM is wired by hand, verify before decapsulate.
+        </p>
+
+        <h3 class="snippet-heading">Anonymous envelope — one call per direction</h3>
+        <CopyableCode Label="HybridEnvelope.Seal / Open"
+                      Code="@anonymousEnvelopeCode" />
+        <p class="caveat">
+            Source:
+            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/samples/EnvelopesDemo/Program.cs"><code>samples/EnvelopesDemo</code></a>.
+        </p>
+
+        <h3 class="snippet-heading">Signed envelope — sender identity baked in</h3>
+        <CopyableCode Label="SignedHybridEnvelope.Seal / Open"
+                      Code="@signedEnvelopeCode" />
+        <p class="caveat">
+            Verify-before-decapsulate (PQH003) is enforced internally — the
+            recipient never sees plaintext that hasn't been authenticated.
+        </p>
+
+        <h3 class="snippet-heading">ASP.NET Core wiring with rotating keys</h3>
+        <CopyableCode Label="AddPostQuantumHybrid + AddRotatingHybridKemKeys"
+                      Code="@aspnetCoreWiringCode" />
+        <p class="caveat">
+            Source:
+            <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/blob/main/samples/KeyRotationDemo/Program.cs"><code>samples/KeyRotationDemo</code></a>.
         </p>
     </section>
 
     <section id="install" class="band">
         <h2>Use this in your project</h2>
-        <p class="placeholder">
-            Install commands, template references, and the "which package?"
-            matrix land in Phase&nbsp;5.
+        <p>
+            Three packages cover the vast majority of usage. Install the
+            base library, the recommended high-level API, and the
+            analyzers; reach for the AspNetCore / TestingSupport / Templates
+            packages only when you need them.
         </p>
-        <pre class="code">dotnet add package PostQuantum.Hybrid
-dotnet add package PostQuantum.Hybrid.Envelopes
-dotnet add package PostQuantum.Hybrid.Analyzers</pre>
+
+        <h3 class="snippet-heading">Add the packages</h3>
+        <CopyableCode Label="dotnet add package"
+                      Language="bash"
+                      Code="@installCommandsCode" />
+
+        <h3 class="snippet-heading">Or start from a template</h3>
+        <CopyableCode Label="dotnet new"
+                      Language="bash"
+                      Code="@templateCommandsCode" />
+
+        <h3 class="snippet-heading">Which package do I want?</h3>
+        <div class="package-matrix">
+            <div class="package-row package-row-head">
+                <div>Package</div>
+                <div>Use it for</div>
+            </div>
+            <div class="package-row">
+                <div><code>PostQuantum.Hybrid</code></div>
+                <div>Always. The core <code>HybridKem</code> + <code>HybridSignature</code> primitives. Direct use is the advanced path.</div>
+            </div>
+            <div class="package-row">
+                <div><code>PostQuantum.Hybrid.Envelopes</code></div>
+                <div><strong>Default for new code.</strong> One-call <code>HybridEnvelope.Seal</code> / <code>Open</code> and <code>SignedHybridEnvelope.Seal</code> / <code>Open</code>.</div>
+            </div>
+            <div class="package-row">
+                <div><code>PostQuantum.Hybrid.Analyzers</code></div>
+                <div><strong>Always install</strong> alongside the base library. Catches PQH001-PQH005 at build time. Skipping it is a hostile choice for your future self.</div>
+            </div>
+            <div class="package-row">
+                <div><code>PostQuantum.Hybrid.AspNetCore</code></div>
+                <div>If you're in ASP.NET Core: DI extensions, <code>IRotatingHybridKemKeyProvider</code>, <code>HybridEnvelopeDataProtector</code>.</div>
+            </div>
+            <div class="package-row">
+                <div><code>PostQuantum.Hybrid.TestingSupport</code></div>
+                <div>If you're writing tests against hybrid keys: cached deterministic key pairs, tamper-injection helpers, fake providers.</div>
+            </div>
+            <div class="package-row">
+                <div><code>PostQuantum.Hybrid.Templates</code></div>
+                <div>If you want a fresh <code>dotnet new</code> scaffold instead of copying snippets.</div>
+            </div>
+        </div>
     </section>
+
+@code {
+    // Snippets shown in #copy. Verbatim from the recommended samples
+    // (verbatim strings rather than raw string literals because Razor's
+    // pre-tokenizer trips on """ inside @code blocks).
+    private const string anonymousEnvelopeCode = @"using PostQuantum.Hybrid;
+using PostQuantum.Hybrid.Envelopes;
+
+// Recipient holds the KEM key pair. `using` is mandatory — PQH001
+// catches any local of these types declared without it.
+using var recipient = HybridKem.GenerateKeyPair();
+
+// Sender side — one call. No HKDF, no AesGcm, no nonce generation,
+// no associatedData binding, no manual zeroization.
+byte[] envelope = HybridEnvelope.Seal(recipient.PublicKey, plaintext);
+
+// Recipient side — one call. Throws CryptographicException on any
+// tamper / parse failure (fail-closed).
+byte[] recovered = HybridEnvelope.Open(recipient.PrivateKey, envelope);";
+
+    private const string signedEnvelopeCode = @"using PostQuantum.Hybrid;
+using PostQuantum.Hybrid.Envelopes;
+
+using var sender    = HybridSignature.GenerateKeyPair();
+using var recipient = HybridKem.GenerateKeyPair();
+
+// Sign + seal in one call. The signature covers the full inner
+// envelope; tamper anywhere fails verification before decryption.
+byte[] envelope = SignedHybridEnvelope.Seal(
+    sender.PrivateKey, recipient.PublicKey, plaintext);
+
+// Verify (PQH003) THEN decapsulate. Open throws on any failure.
+byte[] recovered = SignedHybridEnvelope.Open(
+    sender.PublicKey, recipient.PrivateKey, envelope);";
+
+    private const string aspnetCoreWiringCode = @"using PostQuantum.Hybrid.AspNetCore;
+using PostQuantum.Hybrid.Envelopes;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Wire static keys from configuration / KMS / IDataProtector.
+builder.Services.AddPostQuantumHybrid(options =>
+{
+    options.KemPublicKeyPem        = File.ReadAllText(""kem.pub.pem"");
+    options.KemPrivateKeyPem       = File.ReadAllText(""kem.priv.pem"");
+    options.SignaturePublicKeyPem  = File.ReadAllText(""sig.pub.pem"");
+    options.SignaturePrivateKeyPem = File.ReadAllText(""sig.priv.pem"");
+});
+
+// Or — rotating KEM keys, hot-swapped from disk by a sidecar:
+// builder.Services.AddRotatingHybridKemKeys(""kem.pub.pem"", ""kem.priv.pem"");
+
+var app = builder.Build();
+
+app.MapPost(""/seal"", (string plaintext, IHybridKemKeyProvider keys) =>
+{
+    byte[] envelope = HybridEnvelope.Seal(
+        keys.PublicKey, Encoding.UTF8.GetBytes(plaintext));
+    return Results.Json(new { envelope = Convert.ToBase64String(envelope) });
+});
+
+app.Run();";
+
+    private const string installCommandsCode = @"dotnet add package PostQuantum.Hybrid
+dotnet add package PostQuantum.Hybrid.Envelopes      # recommended high-level API
+dotnet add package PostQuantum.Hybrid.Analyzers      # always — catches misuse at build time
+dotnet add package PostQuantum.Hybrid.AspNetCore     # if you're in ASP.NET Core";
+
+    private const string templateCommandsCode = @"dotnet new install PostQuantum.Hybrid.Templates
+
+# Console app pre-wired with PostQuantum.Hybrid + Analyzers.
+dotnet new pqhybrid-app -n MyApp
+
+# ASP.NET Core Minimal API with the AspNetCore wiring + analyzers.
+dotnet new pqhybrid-webapi -n MyApi
+
+# Console app showing the Envelopes one-call pattern.
+dotnet new pqhybrid-envelope -n MyEnvelope";
+}
 
 </main>
 

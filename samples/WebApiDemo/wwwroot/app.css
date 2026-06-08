@@ -502,6 +502,115 @@ pre.code code {
     margin-top: 0.15rem;
 }
 
+/* ---------- Copyable code snippets ---------- */
+
+.snippet-heading {
+    margin: 1.4rem 0 0.5rem;
+    font-size: 1rem;
+    color: var(--ink);
+}
+
+.snippet {
+    background: var(--code-bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin: 0.4rem 0 0.6rem;
+}
+
+.snippet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.85rem;
+    background: #111827;
+    border-bottom: 1px solid #1f2937;
+}
+
+.snippet-label {
+    color: var(--code-comment);
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.copy-btn {
+    background: transparent;
+    color: #e5e7eb;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.copy-btn:hover {
+    background: #1f2937;
+    border-color: #4b5563;
+}
+
+.copy-btn-done {
+    background: #064e3b;
+    color: #d1fae5;
+    border-color: #047857;
+}
+
+.snippet .code {
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+/* ---------- Package matrix ---------- */
+
+.package-matrix {
+    margin: 0.6rem 0 0.4rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.package-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+    padding: 0.85rem 1.05rem;
+    border-bottom: 1px solid var(--rule);
+}
+
+.package-row:last-child { border-bottom: none; }
+
+@media (min-width: 640px) {
+    .package-row {
+        grid-template-columns: 240px 1fr;
+        gap: 1.25rem;
+        align-items: baseline;
+    }
+}
+
+.package-row-head {
+    background: #f1f5f9;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+}
+
+.package-row-head + .package-row { border-top: 0; }
+
+.package-row code {
+    background: transparent;
+    padding: 0;
+    color: var(--brand);
+    font-weight: 600;
+}
+
 /* ---------- Security hygiene (PQH001-PQH005) ---------- */
 
 .hygiene-grid {

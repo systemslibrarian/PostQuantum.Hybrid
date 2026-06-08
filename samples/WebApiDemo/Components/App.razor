@@ -21,6 +21,42 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        // Copy-to-clipboard for <CopyableCode> components. Independent of
+        // Blazor render-mode wiring — works on the static and interactive
+        // sections alike.
+        function copyFromSnippet(btn) {
+            const snippet = btn.closest('.snippet');
+            if (!snippet) return;
+            const codeEl = snippet.querySelector('code');
+            if (!codeEl) return;
+            const text = codeEl.textContent || '';
+            const restore = () => {
+                btn.textContent = 'Copy';
+                btn.classList.remove('copy-btn-done');
+            };
+            const flash = () => {
+                btn.textContent = 'Copied';
+                btn.classList.add('copy-btn-done');
+                setTimeout(restore, 1400);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(flash).catch(() => {
+                    btn.textContent = 'Copy failed';
+                    setTimeout(restore, 1400);
+                });
+            } else {
+                // Fallback for older browsers.
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); flash(); }
+                catch { btn.textContent = 'Copy failed'; setTimeout(restore, 1400); }
+                document.body.removeChild(ta);
+            }
+        }
+    </script>
 </body>
 
 </html>
