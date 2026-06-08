@@ -1,0 +1,222 @@
+@*
+    Key rotation visualization.
+
+    Shows the live IRotatingHybridKemKeyProvider contract (Version + Rotated
+    event) using the in-process PlaygroundRotationService. The educational
+    point — "envelopes sealed under v1 do NOT open under v2; rotate
+    deliberately and expire ciphertexts" — is the same as the file-backed
+    library API the AspNetCore package ships.
+
+    Three buttons drive it:
+      * Rotate now           → fresh key pair, version advances
+      * Seal a probe         → seals plaintext under current key, stores
+                                the (envelope, sealedAtVersion) tuple
+      * Try to open probe    → calls HybridEnvelope.Open with the CURRENT
+                                private key. Succeeds if we have not rotated
+                                since sealing; fails fail-closed otherwise.
+*@
+
+@implements IDisposable
+@inject PlaygroundRotationService Rotation
+
+<div class="rotation-shell">
+
+    <div class="rotation-cards">
+
+        <div class="rotation-card rotation-version">
+            <div class="rotation-card-label">Current key version</div>
+            <div class="version-badge @(animating ? "version-badge-flash" : "")">
+                v@(Rotation.Version)
+            </div>
+            <p class="rotation-explanation">
+                Bumps every time you click Rotate. Fires the
+                <code>IRotatingHybridKemKeyProvider.Rotated</code> event in the
+                library — applications subscribe to it to invalidate caches
+                or kick a key-distribution refresh.
+            </p>
+            <div class="actions">
+                <button class="btn btn-primary" type="button" @onclick="DoRotate">Rotate now</button>
+            </div>
+        </div>
+
+        <div class="rotation-card rotation-probe">
+            <div class="rotation-card-label">Probe envelope</div>
+
+            @if (probeSealedAtVersion is null)
+            {
+                <p class="rotation-explanation">
+                    Seal a small payload under the current key. You can then
+                    try to open it after rotating to see fail-closed behavior.
+                </p>
+                <div class="actions">
+                    <button class="btn btn-primary" type="button" @onclick="SealProbe">Seal probe</button>
+                </div>
+            }
+            else
+            {
+                <dl class="receipt-grid">
+                    <dt>Sealed at version</dt>
+                    <dd>v@(probeSealedAtVersion)</dd>
+                    <dt>Envelope size</dt>
+                    <dd>@probeEnvelopeSize&nbsp;B</dd>
+                    <dt>Current version</dt>
+                    <dd>v@(Rotation.Version) @(Rotation.Version == probeSealedAtVersion ? "(same)" : "(rotated)")</dd>
+                </dl>
+                <div class="actions">
+                    <button class="btn btn-primary" type="button" @onclick="TryOpenProbe">Try to open probe</button>
+                    <button class="btn btn-ghost"   type="button" @onclick="ClearProbe">Clear</button>
+                </div>
+
+                @if (openResult is not null)
+                {
+                    <div class="receipt @(openResultOk ? "receipt-ok" : "receipt-warn")">
+                        <div class="receipt-headline">@openResult.Headline</div>
+                        <dl class="receipt-grid">
+                            @foreach (var (k, v) in openResult.Lines)
+                            {
+                                <dt>@k</dt>
+                                <dd>@v</dd>
+                            }
+                        </dl>
+                    </div>
+                }
+            }
+        </div>
+
+    </div>
+
+    <div class="rotation-log">
+        <div class="rotation-log-label">Recent rotations</div>
+        @if (rotationLog.Count == 0)
+        {
+            <p class="rotation-explanation">No rotations yet. Click <em>Rotate now</em> above.</p>
+        }
+        else
+        {
+            <ol class="rotation-log-list">
+                @foreach (var entry in rotationLog)
+                {
+                    <li>
+                        <span class="log-version">v@(entry.Version)</span>
+                        <span class="log-time">@entry.At.ToString("HH:mm:ss")</span>
+                        <span class="log-detail">@entry.Detail</span>
+                    </li>
+                }
+            </ol>
+        }
+    </div>
+
+</div>
+
+@code {
+    private byte[]? probeEnvelope;
+    private int? probeSealedAtVersion;
+    private int probeEnvelopeSize;
+    private OpenResultData? openResult;
+    private bool openResultOk;
+    private bool animating;
+    private readonly List<LogEntry> rotationLog = new();
+    private const string ProbePlaintext = "rotation-probe-payload";
+
+    protected override void OnInitialized()
+    {
+        Rotation.Rotated += HandleRotated;
+    }
+
+    public void Dispose()
+    {
+        Rotation.Rotated -= HandleRotated;
+    }
+
+    private void HandleRotated(int newVersion)
+    {
+        // Library contract: external subscribers learn of rotation via this
+        // event. Here we just trigger a re-render so the version badge shows
+        // the new value if rotation came from somewhere other than our own
+        // button — defensive even though we are the only rotator in v1.
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DoRotate()
+    {
+        var newVersion = Rotation.Rotate();
+        rotationLog.Insert(0, new LogEntry(newVersion, DateTimeOffset.UtcNow, "Fresh hybrid KEM key pair generated; previous pair disposed (sensitive buffers zeroed)."));
+        if (rotationLog.Count > 6) { rotationLog.RemoveRange(6, rotationLog.Count - 6); }
+
+        // Animate the version badge briefly so the change is visible.
+        animating = true;
+        StateHasChanged();
+        await Task.Delay(700);
+        animating = false;
+        StateHasChanged();
+    }
+
+    private void SealProbe()
+    {
+        var plain = System.Text.Encoding.UTF8.GetBytes(ProbePlaintext);
+        var envelope = HybridEnvelope.Seal(Rotation.PublicKey, plain);
+        probeEnvelope = envelope;
+        probeEnvelopeSize = envelope.Length;
+        probeSealedAtVersion = Rotation.Version;
+        openResult = null;
+    }
+
+    private void TryOpenProbe()
+    {
+        if (probeEnvelope is null || probeSealedAtVersion is null)
+        {
+            return;
+        }
+
+        var currentVersion = Rotation.Version;
+        try
+        {
+            var recovered = HybridEnvelope.Open(Rotation.PrivateKey, probeEnvelope);
+            openResultOk = true;
+            openResult = new OpenResultData
+            {
+                Headline = $"Probe opened under v{currentVersion}.",
+                Lines = new()
+                {
+                    ("Recovered",       System.Text.Encoding.UTF8.GetString(recovered)),
+                    ("Sealed at",       $"v{probeSealedAtVersion}"),
+                    ("Opened at",       $"v{currentVersion}"),
+                    ("Why this works",  "No rotation between seal and open; the current private key still decapsulates the envelope's KEM ciphertext."),
+                },
+            };
+        }
+        catch (System.Security.Cryptography.CryptographicException ex)
+        {
+            openResultOk = false;
+            openResult = new OpenResultData
+            {
+                Headline = "Open failed — fail-closed.",
+                Lines = new()
+                {
+                    ("Sealed at",      $"v{probeSealedAtVersion}"),
+                    ("Tried open at",  $"v{currentVersion}"),
+                    ("Exception",      ex.GetType().Name),
+                    ("Message",        ex.Message),
+                    ("Why",            "ML-KEM uses FIPS-203 implicit rejection: decapsulating an envelope sealed against a rotated-out key yields a pseudorandom shared secret. The HKDF-derived AES key diverges, so AES-256-GCM's authenticated decryption rejects the ciphertext. No silent fallback."),
+                    ("Production note",  "Applications surface this as HTTP 410 Gone (see samples/KeyRotationDemo) and require the sender to re-seal under the current key."),
+                },
+            };
+        }
+    }
+
+    private void ClearProbe()
+    {
+        probeEnvelope = null;
+        probeSealedAtVersion = null;
+        probeEnvelopeSize = 0;
+        openResult = null;
+    }
+
+    private sealed class OpenResultData
+    {
+        public string Headline { get; init; } = "";
+        public List<(string Key, string Value)> Lines { get; init; } = new();
+    }
+
+    private sealed record LogEntry(int Version, DateTimeOffset At, string Detail);
+}

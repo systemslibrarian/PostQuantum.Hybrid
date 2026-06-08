@@ -502,6 +502,122 @@ pre.code code {
     margin-top: 0.15rem;
 }
 
+/* ---------- Rotation visualization ---------- */
+
+.rotation-shell {
+    margin: 0.5rem 0 1.25rem;
+}
+
+.rotation-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .rotation-cards { grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+}
+
+.rotation-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.2rem;
+    box-shadow: var(--shadow);
+}
+
+.rotation-card-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-bottom: 0.55rem;
+}
+
+.version-badge {
+    display: inline-block;
+    background: var(--brand);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.45rem 1.05rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(30, 58, 138, 0.18);
+    transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.version-badge-flash {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.32);
+    animation: badgePulse 700ms ease;
+}
+
+@keyframes badgePulse {
+    0%   { transform: scale(1);    box-shadow: 0 1px 2px rgba(30, 58, 138, 0.18); }
+    35%  { transform: scale(1.10); box-shadow: 0 0 0 6px rgba(13, 148, 136, 0.34); }
+    100% { transform: scale(1.06); box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.32); }
+}
+
+.rotation-explanation {
+    margin: 0.6rem 0 0.85rem;
+    color: var(--ink-soft);
+    font-size: 0.93rem;
+    line-height: 1.55;
+}
+
+.rotation-log {
+    margin-top: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    box-shadow: var(--shadow);
+}
+
+.rotation-log-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-bottom: 0.55rem;
+}
+
+.rotation-log-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rotation-log-list li {
+    display: grid;
+    grid-template-columns: 4.2rem 4.8rem 1fr;
+    gap: 0.85rem;
+    align-items: baseline;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.9rem;
+}
+
+.rotation-log-list li:last-child { border-bottom: 0; }
+
+.log-version {
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-weight: 600;
+    color: var(--brand);
+}
+
+.log-time {
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+}
+
+.log-detail {
+    color: var(--ink);
+}
+
 /* ---------- Tamper panel ---------- */
 
 .tamper-panel {

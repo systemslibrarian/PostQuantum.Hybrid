@@ -121,11 +121,22 @@
 
     <section id="rotation" class="band">
         <h2>Key rotation</h2>
-        <p class="placeholder">
-            Live <code>IRotatingHybridKemKeyProvider</code> visualization
-            lands in Phase&nbsp;3. See
+        <p>
+            Production-grade key handling rotates KEM keys on a schedule so a
+            single key compromise doesn't leak forever. The library exposes
+            <code>IRotatingHybridKemKeyProvider</code> in
+            <code>PostQuantum.Hybrid.AspNetCore</code> for this — version
+            counter, <code>Rotated</code> event, atomic in-memory swap on
+            file change. Below is a live demonstration of that contract.
+        </p>
+        <KeyRotation />
+        <p class="caveat">
+            This page rotates in-process on click for clarity. The library's
+            shipping implementation reloads from disk via FileSystemWatcher;
+            see
             <a href="https://github.com/systemslibrarian/PostQuantum.Hybrid/tree/main/samples/KeyRotationDemo"><code>samples/KeyRotationDemo</code></a>
-            for the runnable script in the meantime.
+            for the file-driven flow with the
+            <code>SimulatedSidecarService</code>.
         </p>
     </section>
 

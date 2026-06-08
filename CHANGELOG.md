@@ -5,6 +5,29 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — WebApiDemo gold-standard playground (Phase 3: key rotation)
+- `Services/PlaygroundRotationService.cs` — in-process rotation service
+  that mirrors the
+  `PostQuantum.Hybrid.AspNetCore.IRotatingHybridKemKeyProvider` contract
+  (`Version`, `PublicKey`, `PrivateKey`, `Rotated` event). The
+  library's file-backed implementation is internal sealed; this
+  in-process version sidesteps the file watcher (and the writable
+  directory it would otherwise need in the container) while
+  demonstrating the same contract. Atomic key swap under a lock,
+  zeroizes the old pair's sensitive buffers on disposal.
+- `Components/KeyRotation.razor` — visualization for the `#rotation`
+  section. Big v@Version badge with a brief flash animation on
+  rotation; "Rotate now" / "Seal probe" / "Try to open probe" workflow
+  surfaces the educational payoff (envelopes sealed under vN do **not**
+  open under vN+1 — fail-closed via ML-KEM's FIPS-203 implicit
+  rejection, with a production note pointing at the 410 Gone pattern
+  in `samples/KeyRotationDemo`). Rotation log keeps the last six
+  events visible. Subscribes to `Rotated` in `OnInitialized` and
+  unsubscribes via `IDisposable` so external rotations would also
+  trigger re-render.
+- CSS additions: `.rotation-shell`, `.rotation-cards`, `.version-badge`
+  with `@@keyframes badgePulse`, `.rotation-log`.
+
 ### Added — WebApiDemo gold-standard playground (Phase 2: live demo tabs)
 - `Components/LiveDemo.razor` — three-tab interactive demo wired into the
   Home page's `#demo` section. **Recommended** (default) drives

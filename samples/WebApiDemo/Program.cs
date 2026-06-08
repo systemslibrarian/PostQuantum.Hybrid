@@ -71,6 +71,14 @@ builder.Services.AddPostQuantumHybrid(options =>
 // BouncyCastle fallback. See ADR 0012.
 builder.Services.AddSingleton<BackendInfoService>();
 
+// In-process rotation service for the playground's #rotation section.
+// Mirrors the IRotatingHybridKemKeyProvider contract (Version + Rotated
+// event) but rotates in memory on user request, sidestepping the file
+// watcher used by the real AddRotatingHybridKemKeys registration (the
+// library's RotatingHybridKemKeyProvider is internal sealed, so we cannot
+// reuse the impl directly here).
+builder.Services.AddSingleton<PlaygroundRotationService>();
+
 // Blazor Server. The playground is a single Razor component with anchor-link
 // navigation, so we keep the component tree small and the interactive render
 // mode server-side (the crypto runs on the server anyway).
