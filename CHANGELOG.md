@@ -52,6 +52,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   under the demo or the library source.
 - `.dockerignore` at the repo root keeps the ACR build-context upload
   small.
+- `samples/WebApiDemo/CUSTOM-DOMAIN.md` — Cloudflare DNS +
+  Azure-managed-cert recipe for serving the live demo at
+  `demo.pqhybrid.systemslibrarian.dev`. Mirrors the
+  PostQuantum.Jwt playground's custom-domain doc.
 
 ### Added — analyzer-enforced sample policy
 - `samples/Directory.Build.props` adds `PostQuantum.Hybrid.Analyzers`

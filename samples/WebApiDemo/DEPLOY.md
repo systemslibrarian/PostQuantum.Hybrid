@@ -171,6 +171,12 @@ With `--min-replicas 0`, ACA scales the demo to zero when no one is using
 it, so you pay only for actual request time plus the small ACR storage. A
 low-traffic public demo typically costs a few dollars a month or less.
 
+## Custom domain
+
+To serve the demo at `demo.pqhybrid.systemslibrarian.dev` with a free
+managed certificate (Cloudflare DNS), see
+**[CUSTOM-DOMAIN.md](CUSTOM-DOMAIN.md)**.
+
 ---
 
 *To God be the glory — 1 Corinthians 10:31.*
