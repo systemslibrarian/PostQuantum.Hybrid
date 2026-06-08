@@ -38,6 +38,7 @@ COPY global.json ./
 COPY Directory.Build.props ./
 COPY Directory.Build.targets ./
 COPY src/PostQuantum.Hybrid/ src/PostQuantum.Hybrid/
+COPY src/PostQuantum.Hybrid.Envelopes/ src/PostQuantum.Hybrid.Envelopes/
 COPY src/PostQuantum.Hybrid.AspNetCore/ src/PostQuantum.Hybrid.AspNetCore/
 COPY src/PostQuantum.Hybrid.Analyzers/ src/PostQuantum.Hybrid.Analyzers/
 COPY samples/Directory.Build.props samples/Directory.Build.props
