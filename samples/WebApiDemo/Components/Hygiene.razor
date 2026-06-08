@@ -1,0 +1,60 @@
+@*
+    Security hygiene — the five Roslyn analyzers (PQH001 through PQH005) that
+    ship in PostQuantum.Hybrid.Analyzers, with a bad-vs-good snippet for each.
+
+    The displayed Title, DiagnosticMessage, BadCode, and GoodCode strings come
+    from AnalyzerCatalog — see that file for the source. Titles and messages
+    are quoted verbatim from the analyzer's DiagnosticDescriptor so what the
+    page shows matches what `dotnet build` would print.
+
+    There is no live analyzer invocation: running Roslyn at runtime in this
+    Blazor process would mean pulling Microsoft.CodeAnalysis.CSharp into the
+    container image (~3 MB plus a one-shot ~1 s warm-up) and locking the
+    demo to the analyzer's exact PackageReference version. The catalog
+    approach trades that for a hand-curated entry that's verified at build
+    time by the analyzer reference itself: every other project in the repo
+    has PQH001-PQH005 turned into build errors, so the canonical
+    "good code" patterns in the demo MUST stay analyzer-clean.
+*@
+
+<div class="hygiene-grid">
+    @foreach (var rule in AnalyzerCatalog.All)
+    {
+        var ruleId = rule.Id.ToLowerInvariant();
+        <div class="hygiene-card" id="@ruleId">
+            <div class="hygiene-card-head">
+                <span class="rule-chip">@rule.Id</span>
+                <h3>@rule.Title</h3>
+                <span class="rule-severity">@rule.Severity</span>
+            </div>
+            <p class="rule-explanation">@rule.ShortExplanation</p>
+
+            <div class="rule-grid">
+                <div class="rule-pane rule-bad">
+                    <div class="rule-pane-label">Bad — fires @rule.Id</div>
+                    <pre class="code"><code>@rule.BadCode</code></pre>
+                </div>
+                <div class="rule-pane rule-good">
+                    <div class="rule-pane-label">Good — analyzer-clean</div>
+                    <pre class="code"><code>@rule.GoodCode</code></pre>
+                </div>
+            </div>
+
+            <div class="rule-diagnostic">
+                <span class="rule-diagnostic-label">Diagnostic</span>
+                <code class="rule-diagnostic-text">@rule.DiagnosticMessage</code>
+            </div>
+
+            <p class="rule-link">
+                <a href="@rule.SourceUrl" target="_blank" rel="noopener">analyzer source on GitHub →</a>
+            </p>
+        </div>
+    }
+</div>
+
+<p class="caveat">
+    These analyzers are enforced as <strong>build errors</strong> across the
+    library, tests, samples, and benchmarks (<code>TreatWarningsAsErrors=true</code>
+    + the analyzer reference). The samples in this repo serve as a living
+    regression test: any drift from analyzer-clean patterns fails the build.
+</p>

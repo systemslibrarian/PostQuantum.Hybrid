@@ -5,6 +5,30 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — WebApiDemo gold-standard playground (Phase 4: analyzer demo)
+- `Services/AnalyzerCatalog.cs` — static catalog of PQH001-PQH005 with
+  each rule's `DiagnosticDescriptor.Title` and `MessageFormat` text
+  quoted verbatim from the analyzer source, plus a hand-curated
+  bad/good code pair for every rule. Centralized so the Razor view is
+  data-driven.
+- `Components/Hygiene.razor` renders one card per rule into the
+  `#hygiene` section: rule chip, title, severity, short explanation,
+  bad / good side-by-side code panes (red / green left borders),
+  verbatim diagnostic text in an amber callout, link to the analyzer
+  source on GitHub. The "good" snippets match the canonical patterns
+  the codebase already enforces via the analyzer + `TreatWarningsAsErrors`
+  on every project — so any drift from analyzer-clean code fails the
+  build, which keeps the catalog honest.
+- Trade-off noted in `Hygiene.razor`'s header: we do NOT run Roslyn at
+  runtime (Microsoft.CodeAnalysis.CSharp would add ~3 MB to the image
+  plus a one-shot ~1 s warm-up, and lock the demo to an exact analyzer
+  PackageReference version). The catalog approach trades that for
+  verbatim quotes from the analyzer source.
+- CSS additions: `.hygiene-grid`, `.hygiene-card`, `.rule-chip`,
+  `.rule-severity`, `.rule-grid` (responsive two-column at ≥720 px),
+  `.rule-pane` with red/green variants, `.rule-diagnostic` amber
+  callout. Plus accent-color helpers for code-block label text.
+
 ### Added — WebApiDemo gold-standard playground (Phase 3: key rotation)
 - `Services/PlaygroundRotationService.cs` — in-process rotation service
   that mirrors the

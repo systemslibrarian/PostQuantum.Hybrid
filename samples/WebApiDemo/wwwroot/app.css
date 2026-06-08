@@ -502,6 +502,136 @@ pre.code code {
     margin-top: 0.15rem;
 }
 
+/* ---------- Security hygiene (PQH001-PQH005) ---------- */
+
+.hygiene-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+    margin: 0.75rem 0 1.25rem;
+}
+
+.hygiene-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.1rem 1.25rem 1.2rem;
+    scroll-margin-top: 4.5rem;
+}
+
+.hygiene-card-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-bottom: 0.65rem;
+}
+
+.hygiene-card-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    flex: 1 1 auto;
+}
+
+.rule-chip {
+    display: inline-block;
+    background: var(--brand);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.25rem 0.55rem;
+    border-radius: 6px;
+}
+
+.rule-severity {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--warn);
+    padding: 0.18rem 0.5rem;
+    border: 1px solid var(--warn);
+    border-radius: 999px;
+}
+
+.rule-explanation {
+    color: var(--ink-soft);
+    margin: 0 0 0.85rem;
+    font-size: 0.93rem;
+    line-height: 1.55;
+}
+
+.rule-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    margin-bottom: 0.95rem;
+}
+
+@media (min-width: 720px) {
+    .rule-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
+}
+
+.rule-pane {
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem 0.7rem;
+    border: 1px solid #1f2937;
+    position: relative;
+}
+
+.rule-pane .code {
+    margin: 0;
+    background: transparent;
+    padding: 0;
+    font-size: 0.85rem;
+}
+
+.rule-pane-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+    color: var(--code-comment);
+}
+
+.rule-bad .rule-pane-label { color: #fca5a5; }
+.rule-good .rule-pane-label { color: #6ee7b7; }
+.rule-bad   { border-color: #7f1d1d; }
+.rule-good  { border-color: #065f46; }
+
+.rule-diagnostic {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-left: 4px solid var(--warn);
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    margin-bottom: 0.7rem;
+    font-size: 0.88rem;
+}
+
+.rule-diagnostic-label {
+    color: var(--warn);
+    font-weight: 600;
+    margin-right: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.72rem;
+}
+
+.rule-diagnostic-text {
+    color: #92400e;
+    background: transparent;
+    padding: 0;
+}
+
+.rule-link {
+    margin: 0;
+    font-size: 0.88rem;
+}
+
 /* ---------- Rotation visualization ---------- */
 
 .rotation-shell {

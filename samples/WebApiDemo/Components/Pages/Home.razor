@@ -142,10 +142,15 @@
 
     <section id="hygiene" class="band">
         <h2>Security hygiene</h2>
-        <p class="placeholder">
-            Live PQH001–PQH005 analyzer diagnostics from a deliberately-broken
-            companion project land in Phase&nbsp;4.
+        <p>
+            Five Roslyn analyzers ship in
+            <code>PostQuantum.Hybrid.Analyzers</code> and turn the most common
+            misuse patterns into build-time errors. Each rule below shows the
+            shape of bad code that fires it, the exact diagnostic the
+            compiler will print, and the analyzer-clean replacement that
+            production code in this repo follows.
         </p>
+        <Hygiene />
     </section>
 
     <section id="copy" class="band">
