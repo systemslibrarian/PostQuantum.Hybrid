@@ -3,32 +3,7 @@
 All notable changes to **PostQuantum.Hybrid** will be documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] — Unreleased
-
-### Added — v1.x preview surface (ships in 1.0; semver-stable when refined)
-- **X-Wing combiner at algorithm-id `0x02`.** New
-  `HybridKemAlgorithm.X25519MlKem768XWing` enum value backed by a
-  SHA3-256 combiner per draft-connolly-cfrg-xwing-kem. Opt-in only;
-  `HybridKem.Default` stays on the v1 HKDF combiner. v1 component
-  layout preserved — algorithm-id `0x02` is **not** byte-compatible
-  with the IETF X-Wing wire format (PQ-first ordering); strict IETF
-  interop is deliberately deferred to a future algorithm-id. See
-  [ADR 0013](docs/adr/0013-xwing-combiner-preview.md).
-- **X.509 SPKI / PKCS#8 framing.** Eight new methods total:
-  `Export/ImportSubjectPublicKeyInfo` on the public-key types,
-  `Export/ImportPkcs8PrivateKey` on the private-key types. DER
-  envelopes use `System.Formats.Asn1`; inner bytes are the v1 wire
-  format. Algorithm OIDs are placeholders under RFC 5612's IANA
-  Example PEN (`1.3.6.1.4.1.32473`) — the IETF LAMPS composite-KEM /
-  composite-signature drafts have not allocated final OIDs yet. See
-  [ADR 0014](docs/adr/0014-spki-pkcs8-preview.md).
-- **NIST `.rsp` KAT runner.** `NistKatRunner` + `NistKatParser` parse
-  NIST's published key-answer-test format and cross-validate both
-  BouncyCastle and the native .NET 10 backend against published
-  vectors when the `PQH_NIST_KAT_DIR` environment variable points at a
-  directory containing them. The weekly `nist-kats.yml` workflow
-  downloads them from `vars.NIST_KAT_MIRROR` when configured. Skips
-  cleanly when neither is set.
+## [Unreleased]
 
 ### Added — containerized WebApiDemo + Azure deploy scaffolding
 - `samples/WebApiDemo/Dockerfile` — multi-stage build on
@@ -59,7 +34,34 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **Live demo now public at <https://demo.pqhybrid.systemslibrarian.dev>.**
   README and `PostQuantum.Hybrid.AspNetCore` README link to it; the
   package's `PackageReadmeFile` flows the link onto the NuGet listing
-  page when v1.0.0 ships.
+  page with the next published version.
+
+## [1.0.0] — 2026-06-07
+
+### Added — v1.x preview surface (ships in 1.0; semver-stable when refined)
+- **X-Wing combiner at algorithm-id `0x02`.** New
+  `HybridKemAlgorithm.X25519MlKem768XWing` enum value backed by a
+  SHA3-256 combiner per draft-connolly-cfrg-xwing-kem. Opt-in only;
+  `HybridKem.Default` stays on the v1 HKDF combiner. v1 component
+  layout preserved — algorithm-id `0x02` is **not** byte-compatible
+  with the IETF X-Wing wire format (PQ-first ordering); strict IETF
+  interop is deliberately deferred to a future algorithm-id. See
+  [ADR 0013](docs/adr/0013-xwing-combiner-preview.md).
+- **X.509 SPKI / PKCS#8 framing.** Eight new methods total:
+  `Export/ImportSubjectPublicKeyInfo` on the public-key types,
+  `Export/ImportPkcs8PrivateKey` on the private-key types. DER
+  envelopes use `System.Formats.Asn1`; inner bytes are the v1 wire
+  format. Algorithm OIDs are placeholders under RFC 5612's IANA
+  Example PEN (`1.3.6.1.4.1.32473`) — the IETF LAMPS composite-KEM /
+  composite-signature drafts have not allocated final OIDs yet. See
+  [ADR 0014](docs/adr/0014-spki-pkcs8-preview.md).
+- **NIST `.rsp` KAT runner.** `NistKatRunner` + `NistKatParser` parse
+  NIST's published key-answer-test format and cross-validate both
+  BouncyCastle and the native .NET 10 backend against published
+  vectors when the `PQH_NIST_KAT_DIR` environment variable points at a
+  directory containing them. The weekly `nist-kats.yml` workflow
+  downloads them from `vars.NIST_KAT_MIRROR` when configured. Skips
+  cleanly when neither is set.
 
 ### Added — analyzer-enforced sample policy
 - `samples/Directory.Build.props` adds `PostQuantum.Hybrid.Analyzers`
