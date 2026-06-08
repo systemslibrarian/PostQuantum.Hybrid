@@ -252,6 +252,277 @@ pre.code code {
     line-height: 1.55;
 }
 
+/* ------------------------------ Caveat helper ---------------------------- */
+
+.caveat {
+    margin-top: 1.25rem;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    border-left: 3px solid var(--rule);
+    padding-left: 1rem;
+}
+
+/* ------------------------------ Live demo shell -------------------------- */
+
+.demo-shell {
+    margin: 0.75rem 0 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+    background: #f1f5f9;
+}
+
+.tab {
+    flex: 1 1 0;
+    min-width: 120px;
+    padding: 0.85rem 1rem 0.7rem;
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--rule);
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    text-align: left;
+    color: var(--ink-soft);
+    font: inherit;
+    line-height: 1.2;
+}
+.tab:last-child { border-right: 0; }
+
+.tab:hover {
+    color: var(--ink);
+    background: #e2e8f0;
+}
+
+.tab-active {
+    background: var(--surface);
+    color: var(--ink);
+    border-bottom-color: var(--brand);
+    font-weight: 600;
+}
+
+.tab-sub {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--ink-soft);
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    margin-top: 0.18rem;
+}
+
+.tab-active .tab-sub { color: var(--brand); }
+
+.tab-panel { padding: 1.25rem 1.25rem 1.4rem; }
+
+.tab-summary {
+    margin: 0 0 1.1rem;
+    color: var(--ink);
+    font-size: 0.98rem;
+    line-height: 1.55;
+}
+
+.field-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin: 0.6rem 0 0.35rem;
+    letter-spacing: 0.01em;
+}
+
+.textarea {
+    width: 100%;
+    background: #f8fafc;
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0.7rem 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.textarea:focus {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0.9rem 0 0;
+}
+
+.btn {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0.55rem 1.05rem;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+
+.btn-primary {
+    background: var(--brand);
+    color: #fff;
+}
+.btn-primary:hover { background: #1d4ed8; }
+
+.btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--rule);
+}
+.btn-ghost:hover { border-color: var(--ink-soft); }
+
+.btn-warn {
+    background: #fff;
+    color: var(--warn);
+    border-color: var(--warn);
+}
+.btn-warn:hover { background: #fef3c7; }
+
+/* ---------- Receipt panels ---------- */
+
+.receipt {
+    margin-top: 1.25rem;
+    padding: 0.95rem 1.05rem 1rem;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.receipt-ok    { border-left: 4px solid var(--accent); }
+.receipt-warn  { border-left: 4px solid var(--warn);   }
+.receipt-error { border-left: 4px solid #dc2626; background: #fef2f2; }
+.receipt-tamper { border-left: 4px solid var(--brand); }
+
+.receipt-headline {
+    font-weight: 600;
+    margin-bottom: 0.55rem;
+}
+
+.receipt-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 1.25rem;
+    row-gap: 0.25rem;
+    margin: 0;
+    font-size: 0.92rem;
+}
+
+.receipt-grid dt {
+    color: var(--ink-soft);
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.88rem;
+    white-space: nowrap;
+}
+
+.receipt-grid dd {
+    margin: 0;
+    word-break: break-word;
+}
+
+.receipt details {
+    margin-top: 0.85rem;
+}
+
+.receipt summary {
+    cursor: pointer;
+    color: var(--brand);
+    font-weight: 500;
+}
+
+.envelope-pre {
+    margin: 0.55rem 0 0;
+    padding: 0.7rem 0.85rem;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    max-height: 18rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ---------- Step list (Advanced tab) ---------- */
+
+.step-list {
+    margin: 0.7rem 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+}
+
+.step-list li {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--brand);
+    border-radius: 6px;
+    padding: 0.75rem 0.9rem;
+    margin-bottom: 0.55rem;
+}
+
+.step-title {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 0.25rem;
+}
+
+.step-detail {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin-bottom: 0.3rem;
+    line-height: 1.5;
+}
+
+.step-analyzer {
+    font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    color: var(--accent);
+    background: #ccfbf1;
+    padding: 0.3rem 0.55rem;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 0.15rem;
+}
+
+/* ---------- Tamper panel ---------- */
+
+.tamper-panel {
+    border-top: 1px solid var(--rule);
+    padding: 1.25rem 1.25rem 1.4rem;
+    background: #fffbeb;
+}
+
+.tamper-panel h3 {
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    color: var(--warn);
+}
+
+.tamper-panel p {
+    margin: 0;
+    color: var(--ink);
+    font-size: 0.95rem;
+    max-width: 64ch;
+}
+
 /* ------------------------------ Footer ----------------------------------- */
 
 .site-footer {

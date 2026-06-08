@@ -103,13 +103,19 @@
 
     <section id="demo" class="band">
         <h2>Live demo</h2>
-        <p class="placeholder">
-            Interactive seal / open / sign / verify with Recommended,
-            Intermediate, and Advanced tabs lands in Phase&nbsp;2. Today the
-            REST surface is already wired through the recommended path — try
-            the <a href="/swagger" target="_blank" rel="noopener">REST API at
-            /swagger</a> or hit
-            <code>POST&nbsp;/seal</code> directly.
+        <p>
+            Three depths of API. The default — <strong>Recommended</strong> — is
+            what new code should look like. The other tabs peel layers off so
+            you can see exactly what the library does for you.
+        </p>
+        <LiveDemo />
+        <p class="caveat">
+            The crypto runs on the server. The Blazor Server interactive render
+            mode means clicks call into <code>HybridEnvelope</code> directly
+            without exposing private keys to your browser. If you want to drive
+            the same operations from the shell, the JSON endpoints at
+            <a href="/swagger" target="_blank" rel="noopener">/swagger</a>
+            are wired through the same recommended path.
         </p>
     </section>
 

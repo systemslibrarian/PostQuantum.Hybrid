@@ -5,6 +5,27 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — WebApiDemo gold-standard playground (Phase 2: live demo tabs)
+- `Components/LiveDemo.razor` — three-tab interactive demo wired into the
+  Home page's `#demo` section. **Recommended** (default) drives
+  `HybridEnvelope.Seal / Open`; **Intermediate** drives
+  `SignedHybridEnvelope.Seal / Open` (signature verified before open);
+  **Advanced** walks the manual `HybridKem` + `HKDF` + `AesGcm` pipeline
+  step by step with inline annotations for the PQH analyzer rules each
+  step satisfies (PQH001 on the typed encapsulation result, PQH002 on the
+  typed shared-secret wrapper, PQH005 on KEM ct as associated data).
+- Realistic service-to-service JSON payload as the default input (no toy
+  "hello" strings); receipts surface envelope size, the
+  `HybridEnvelope.OverheadBytes` / `SignedHybridEnvelope.OverheadBytes`
+  constants, the resolved backend, and round-trip match.
+- Tamper panel below each tab: flips one byte in the last produced
+  envelope and shows fail-closed rejection (`CryptographicException`
+  with backend-specific message).
+- `wwwroot/app.css` extended with a complete demo-shell stylesheet: tab
+  bar, textarea, button variants (primary/ghost/warn), receipt panels
+  with status-coded left borders, step-list cards, and the amber tamper
+  panel. All vanilla CSS; no Tailwind / Bootstrap dependency added.
+
 ### Added — WebApiDemo gold-standard playground (Phase 1: foundation)
 - `samples/WebApiDemo` migrates from Minimal API + Swagger-at-root to
   **Blazor Server** hosting an interactive single-page playground at

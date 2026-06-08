@@ -1,0 +1,572 @@
+@*
+    Live demo — three tabs that walk the visitor down through the API depth.
+
+    Recommended (default):
+        HybridEnvelope.Seal / Open. One call per direction; no HKDF, no
+        AesGcm, no nonce management visible. This is what production code
+        should look like.
+
+    Intermediate:
+        SignedHybridEnvelope.Seal / Open. Adds Ed25519+ML-DSA-65 signature
+        on top so the recipient also learns who sent it; verify-before-open
+        is baked in.
+
+    Advanced:
+        Manual HybridKem + HKDF + AES-GCM pipeline broken into named steps.
+        Annotated with the PQH analyzer rules each step satisfies.
+
+    Tamper rejection panel below the tabs flips a byte in whatever
+    envelope was last produced and demonstrates fail-closed behavior.
+
+    The crypto runs on the server (Blazor Server interactive render mode)
+    so the page can call into HybridEnvelope directly without exposing
+    private keys to the client.
+*@
+
+@inject IHybridKemKeyProvider KemKeys
+@inject IHybridSignatureKeyProvider SigKeys
+@inject BackendInfoService Backend
+
+<div class="demo-shell">
+
+    <div class="tabs" role="tablist">
+        <button type="button" role="tab"
+                class="tab @(activeTab == DemoTab.Recommended ? "tab-active" : "")"
+                aria-selected="@(activeTab == DemoTab.Recommended)"
+                @onclick="() => Switch(DemoTab.Recommended)">
+            Recommended
+            <span class="tab-sub">HybridEnvelope</span>
+        </button>
+        <button type="button" role="tab"
+                class="tab @(activeTab == DemoTab.Intermediate ? "tab-active" : "")"
+                aria-selected="@(activeTab == DemoTab.Intermediate)"
+                @onclick="() => Switch(DemoTab.Intermediate)">
+            Intermediate
+            <span class="tab-sub">SignedHybridEnvelope</span>
+        </button>
+        <button type="button" role="tab"
+                class="tab @(activeTab == DemoTab.Advanced ? "tab-active" : "")"
+                aria-selected="@(activeTab == DemoTab.Advanced)"
+                @onclick="() => Switch(DemoTab.Advanced)">
+            Advanced
+            <span class="tab-sub">manual KEM + HKDF + AEAD</span>
+        </button>
+    </div>
+
+    <div class="tab-panel">
+
+        <p class="tab-summary">
+            @switch (activeTab)
+            {
+                case DemoTab.Recommended:
+                    <span>
+                        Default for new code. <code>HybridEnvelope.Seal</code> does the entire
+                        pipeline in one call: KEM encapsulation (X25519 + ML-KEM-768),
+                        HKDF-SHA256 key derivation, AES-256-GCM with the KEM ciphertext
+                        bound into associated data, nonce generation, and shared-secret
+                        zeroization on exit.
+                    </span>
+                    break;
+                case DemoTab.Intermediate:
+                    <span>
+                        Same as Recommended, but the envelope is also hybrid-signed
+                        (Ed25519 + ML-DSA-65). <code>Open</code> verifies the signature
+                        <em>before</em> decapsulating — the verify-before-decapsulate
+                        ordering that PQH003 enforces in hand-rolled flows is baked in.
+                    </span>
+                    break;
+                case DemoTab.Advanced:
+                    <span>
+                        Educational. Shows the same operation done by hand so you can see
+                        what <code>HybridEnvelope</code> is doing for you. Each step
+                        annotates the analyzer rule (PQH002–PQH005) it satisfies. Reach
+                        for this only when you need a custom pipeline.
+                    </span>
+                    break;
+            }
+        </p>
+
+        <label class="field-label" for="plaintext-input">Plaintext (a realistic service-to-service request)</label>
+        <textarea id="plaintext-input"
+                  class="textarea"
+                  rows="7"
+                  @bind="plaintext"
+                  @bind:event="oninput"></textarea>
+
+        <div class="actions">
+            @switch (activeTab)
+            {
+                case DemoTab.Recommended:
+                    <button class="btn btn-primary" type="button" @onclick="SealRecommended">Seal &amp; Open</button>
+                    break;
+                case DemoTab.Intermediate:
+                    <button class="btn btn-primary" type="button" @onclick="SealIntermediate">Sign, Seal &amp; Open</button>
+                    break;
+                case DemoTab.Advanced:
+                    <button class="btn btn-primary" type="button" @onclick="SealAdvanced">Run the pipeline by hand</button>
+                    break;
+            }
+            <button class="btn btn-ghost" type="button" @onclick="ResetPlaintext">Reset plaintext</button>
+        </div>
+
+        @if (lastError is not null)
+        {
+            <div class="receipt receipt-error">
+                <strong>Error:</strong> @lastError
+            </div>
+        }
+
+        @if (lastReceipt is not null)
+        {
+            <div class="receipt @(lastReceiptOk ? "receipt-ok" : "receipt-warn")">
+                <div class="receipt-headline">@lastReceipt.Headline</div>
+                <dl class="receipt-grid">
+                    @foreach (var (k, v) in lastReceipt.Lines)
+                    {
+                        <dt>@k</dt>
+                        <dd>@v</dd>
+                    }
+                </dl>
+                @if (lastReceipt.EnvelopeBase64 is not null)
+                {
+                    <details class="receipt-envelope">
+                        <summary>Envelope (base64, @lastReceipt.EnvelopeBase64.Length chars)</summary>
+                        <pre class="envelope-pre">@lastReceipt.EnvelopeBase64</pre>
+                    </details>
+                }
+                @if (lastReceipt.RecoveredPlaintext is not null)
+                {
+                    <details class="receipt-recovered" open>
+                        <summary>Recovered plaintext</summary>
+                        <pre class="envelope-pre">@lastReceipt.RecoveredPlaintext</pre>
+                    </details>
+                }
+                @if (lastReceipt.AdvancedSteps is not null)
+                {
+                    <details class="receipt-steps" open>
+                        <summary>Step-by-step (manual pipeline)</summary>
+                        <ol class="step-list">
+                            @foreach (var step in lastReceipt.AdvancedSteps)
+                            {
+                                <li>
+                                    <div class="step-title">@step.Title</div>
+                                    @if (!string.IsNullOrEmpty(step.Detail))
+                                    {
+                                        <div class="step-detail">@step.Detail</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(step.AnalyzerNote))
+                                    {
+                                        <div class="step-analyzer">@step.AnalyzerNote</div>
+                                    }
+                                </li>
+                            }
+                        </ol>
+                    </details>
+                }
+            </div>
+        }
+
+    </div>
+
+    @if (lastEnvelope is not null)
+    {
+        <div class="tamper-panel">
+            <h3>Tamper rejection</h3>
+            <p>
+                Flip a byte inside the last envelope and ask the library to open it. The
+                AEAD tag (and, in Intermediate mode, the hybrid signature) catch the change
+                <em>before</em> the plaintext is returned. There is no "best effort" mode.
+            </p>
+            <div class="actions">
+                <button class="btn btn-warn" type="button" @onclick="TamperLast">Flip one byte and re-open</button>
+            </div>
+
+            @if (tamperReceipt is not null)
+            {
+                <div class="receipt receipt-tamper">
+                    <div class="receipt-headline">@tamperReceipt.Headline</div>
+                    <dl class="receipt-grid">
+                        @foreach (var (k, v) in tamperReceipt.Lines)
+                        {
+                            <dt>@k</dt>
+                            <dd>@v</dd>
+                        }
+                    </dl>
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@code {
+    private enum DemoTab { Recommended, Intermediate, Advanced }
+
+    // Realistic service-to-service request. Keeps the demo away from
+    // toy "hello" examples that don't represent real usage shape. Verbatim
+    // string (not raw string literal) because Razor's pre-tokenizer
+    // mishandles """ when embedded in @code blocks.
+    private const string DefaultPlaintext = @"{
+  ""from"":           ""orders-api"",
+  ""to"":             ""billing-api"",
+  ""amount"":         4250,
+  ""currency"":       ""USD"",
+  ""idempotencyKey"": ""0fb3f74a-1a83-4cca-9b8a-5e8e0ab8b21f""
+}";
+
+    private DemoTab activeTab = DemoTab.Recommended;
+    private string plaintext = DefaultPlaintext;
+
+    private Receipt? lastReceipt;
+    private Receipt? tamperReceipt;
+    private bool lastReceiptOk = true;
+    private string? lastError;
+
+    // Stash the last successfully produced envelope so the tamper panel
+    // and a fresh open both use the same byte buffer. Cleared on tab
+    // switch to avoid mixing envelope formats across tabs.
+    private byte[]? lastEnvelope;
+    private DemoTab lastEnvelopeProducedBy;
+
+    private void Switch(DemoTab next)
+    {
+        if (next == activeTab)
+        {
+            return;
+        }
+        activeTab = next;
+        lastReceipt = null;
+        tamperReceipt = null;
+        lastError = null;
+        lastEnvelope = null;
+    }
+
+    private void ResetPlaintext()
+    {
+        plaintext = DefaultPlaintext;
+        lastReceipt = null;
+        tamperReceipt = null;
+        lastError = null;
+        lastEnvelope = null;
+    }
+
+    private void SealRecommended()
+    {
+        ClearTransientState();
+        try
+        {
+            var plain = System.Text.Encoding.UTF8.GetBytes(plaintext);
+            var envelope = HybridEnvelope.Seal(KemKeys.PublicKey, plain);
+            var recovered = HybridEnvelope.Open(KemKeys.PrivateKey, envelope);
+            var matches = recovered.AsSpan().SequenceEqual(plain);
+
+            lastEnvelope = envelope;
+            lastEnvelopeProducedBy = DemoTab.Recommended;
+            lastReceiptOk = matches;
+            lastReceipt = new Receipt
+            {
+                Headline = matches ? "Sealed and opened — round-trip OK." : "Sealed but round-trip mismatch (bug?).",
+                Lines = new()
+                {
+                    ("Plaintext size",     $"{plain.Length} B"),
+                    ("Envelope size",      $"{envelope.Length} B (overhead {envelope.Length - plain.Length} B = HybridEnvelope.OverheadBytes = {HybridEnvelope.OverheadBytes})"),
+                    ("Backend",            Backend.ShortLabel),
+                    ("Signature",          "(none — anonymous envelope)"),
+                    ("Round-trip match",   matches ? "yes" : "no — investigate"),
+                },
+                EnvelopeBase64 = Convert.ToBase64String(envelope),
+                RecoveredPlaintext = System.Text.Encoding.UTF8.GetString(recovered),
+            };
+        }
+        catch (Exception ex)
+        {
+            lastError = $"{ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    private void SealIntermediate()
+    {
+        ClearTransientState();
+        try
+        {
+            var plain = System.Text.Encoding.UTF8.GetBytes(plaintext);
+            var envelope = SignedHybridEnvelope.Seal(SigKeys.PrivateKey, KemKeys.PublicKey, plain);
+            // Open verifies signature BEFORE decrypting — the rule PQH003
+            // would have caught in a hand-rolled version.
+            var recovered = SignedHybridEnvelope.Open(SigKeys.PublicKey, KemKeys.PrivateKey, envelope);
+            var matches = recovered.AsSpan().SequenceEqual(plain);
+
+            lastEnvelope = envelope;
+            lastEnvelopeProducedBy = DemoTab.Intermediate;
+            lastReceiptOk = matches;
+            lastReceipt = new Receipt
+            {
+                Headline = matches ? "Signed, sealed, opened — signature verified before decryption." : "Mismatch (bug?).",
+                Lines = new()
+                {
+                    ("Plaintext size",   $"{plain.Length} B"),
+                    ("Envelope size",    $"{envelope.Length} B (overhead {envelope.Length - plain.Length} B = SignedHybridEnvelope.OverheadBytes = {SignedHybridEnvelope.OverheadBytes})"),
+                    ("Backend",          Backend.ShortLabel),
+                    ("Signature",        "Ed25519 + ML-DSA-65 (verified before Open returns plaintext)"),
+                    ("Round-trip match", matches ? "yes" : "no — investigate"),
+                },
+                EnvelopeBase64 = Convert.ToBase64String(envelope),
+                RecoveredPlaintext = System.Text.Encoding.UTF8.GetString(recovered),
+            };
+        }
+        catch (Exception ex)
+        {
+            lastError = $"{ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    private void SealAdvanced()
+    {
+        ClearTransientState();
+        try
+        {
+            var plain = System.Text.Encoding.UTF8.GetBytes(plaintext);
+            var steps = new List<DemoStep>();
+
+            // -- 1. Encapsulate -------------------------------------------------
+            // `using` on the encapsulation result zeroes the shared-secret
+            // buffer on scope exit — the analyzer PQH001 catches any
+            // local of these types declared without `using`.
+            using var enc = HybridKem.Encapsulate(KemKeys.PublicKey);
+            var kemCt = enc.Ciphertext.ToBytes();
+            steps.Add(new DemoStep(
+                Title: $"1. Encapsulate: produced {kemCt.Length} B KEM ciphertext and a typed HybridSharedSecret.",
+                Detail: "X25519 share + ML-KEM-768 share combined under HKDF-SHA256 internally to produce the shared secret. Both ciphertexts are part of the wire artifact so the recipient can recover both shared secrets.",
+                AnalyzerNote: "PQH001 — `using` on the HybridKemEncapsulationResult zeroes the shared-secret buffer on scope exit."));
+
+            // -- 2. HKDF derive an AES-256-GCM key ------------------------------
+            // Pass `enc.Secret` (typed wrapper) rather than the raw
+            // `SharedSecret` byte[] — PQH002 catches the raw form.
+            var aesKey = new byte[32];
+            System.Security.Cryptography.HKDF.Expand(
+                System.Security.Cryptography.HashAlgorithmName.SHA256,
+                enc.Secret,
+                aesKey,
+                info: ConcatLabelAndCt("PostQuantum.Hybrid WebApiDemo Advanced AES-256-GCM v1", kemCt));
+            steps.Add(new DemoStep(
+                Title: "2. HKDF-Expand: derived a 32 B AES-256-GCM key from the typed shared secret.",
+                Detail: "info = label || kemCiphertext — binding the KEM transcript into the KDF so a swapped KEM ct yields a different AES key.",
+                AnalyzerNote: "PQH002 — passing the typed `enc.Secret` (not the raw byte[]) to HKDF.Expand is what PQH002 wants to see."));
+
+            // -- 3. AES-256-GCM encrypt with KEM ct as AAD ----------------------
+            var nonce = System.Security.Cryptography.RandomNumberGenerator.GetBytes(12);
+            var ct = new byte[plain.Length];
+            var tag = new byte[16];
+            try
+            {
+                using (var aes = new System.Security.Cryptography.AesGcm(aesKey, tag.Length))
+                {
+                    aes.Encrypt(nonce, plain, ct, tag, associatedData: kemCt);
+                }
+                steps.Add(new DemoStep(
+                    Title: $"3. AES-256-GCM Encrypt: {ct.Length} B ciphertext + 16 B tag + 12 B nonce.",
+                    Detail: "associatedData = KEM ciphertext. Without this binding a swapped KEM ct could pass the AEAD check.",
+                    AnalyzerNote: "PQH005 — passing the KEM ciphertext as associatedData is exactly what PQH005 enforces."));
+
+                // -- 4. Decap + re-derive + decrypt (round-trip) ----------------
+                // HybridKem.Decapsulate returns the raw shared-secret bytes;
+                // we own the buffer and zero it ourselves in finally. (On the
+                // encap side, HybridKemEncapsulationResult is IDisposable so
+                // `using` does this for you — PQH001.)
+                var decapSecret = HybridKem.Decapsulate(KemKeys.PrivateKey, enc.Ciphertext);
+                try
+                {
+                    var verifyAesKey = new byte[32];
+                    System.Security.Cryptography.HKDF.Expand(
+                        System.Security.Cryptography.HashAlgorithmName.SHA256,
+                        decapSecret,
+                        verifyAesKey,
+                        info: ConcatLabelAndCt("PostQuantum.Hybrid WebApiDemo Advanced AES-256-GCM v1", kemCt));
+
+                    var recovered = new byte[ct.Length];
+                    try
+                    {
+                        using (var verifyAes = new System.Security.Cryptography.AesGcm(verifyAesKey, tag.Length))
+                        {
+                            verifyAes.Decrypt(nonce, ct, tag, recovered, associatedData: kemCt);
+                        }
+
+                        var matches = recovered.AsSpan().SequenceEqual(plain);
+                        steps.Add(new DemoStep(
+                            Title: $"4. Decapsulate + HKDF + AES-GCM Decrypt: recovered {recovered.Length} B.",
+                            Detail: matches ? "Plaintext matches the original byte-for-byte." : "Plaintext differs — something is wrong.",
+                            AnalyzerNote: "Anonymous flow — no signature involved. The Intermediate tab adds Ed25519+ML-DSA-65 on top; in that flow PQH003 enforces verify-before-decapsulate."));
+
+                        // Wire-format envelope (informational): kemCt || nonce || ct || tag.
+                        var envelopeBytes = new byte[kemCt.Length + nonce.Length + ct.Length + tag.Length];
+                        Buffer.BlockCopy(kemCt, 0, envelopeBytes, 0, kemCt.Length);
+                        Buffer.BlockCopy(nonce, 0, envelopeBytes, kemCt.Length, nonce.Length);
+                        Buffer.BlockCopy(ct, 0, envelopeBytes, kemCt.Length + nonce.Length, ct.Length);
+                        Buffer.BlockCopy(tag, 0, envelopeBytes, kemCt.Length + nonce.Length + ct.Length, tag.Length);
+
+                        lastEnvelope = envelopeBytes;
+                        lastEnvelopeProducedBy = DemoTab.Advanced;
+                        lastReceiptOk = matches;
+                        lastReceipt = new Receipt
+                        {
+                            Headline = matches ? "Manual pipeline round-tripped." : "Manual pipeline mismatch (bug?).",
+                            Lines = new()
+                            {
+                                ("Plaintext size",   $"{plain.Length} B"),
+                                ("KEM ciphertext",   $"{kemCt.Length} B"),
+                                ("AEAD nonce",       $"{nonce.Length} B"),
+                                ("AEAD ciphertext",  $"{ct.Length} B"),
+                                ("AEAD tag",         $"{tag.Length} B"),
+                                ("Total on the wire",$"{envelopeBytes.Length} B"),
+                                ("Backend",          Backend.ShortLabel),
+                                ("Round-trip match", matches ? "yes" : "no — investigate"),
+                            },
+                            EnvelopeBase64 = Convert.ToBase64String(envelopeBytes),
+                            RecoveredPlaintext = System.Text.Encoding.UTF8.GetString(recovered),
+                            AdvancedSteps = steps,
+                        };
+                    }
+                    finally
+                    {
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(verifyAesKey);
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(recovered);
+                    }
+                }
+                finally
+                {
+                    System.Security.Cryptography.CryptographicOperations.ZeroMemory(decapSecret);
+                }
+            }
+            finally
+            {
+                System.Security.Cryptography.CryptographicOperations.ZeroMemory(aesKey);
+            }
+        }
+        catch (Exception ex)
+        {
+            lastError = $"{ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    private void TamperLast()
+    {
+        tamperReceipt = null;
+        if (lastEnvelope is null)
+        {
+            return;
+        }
+
+        // Copy and flip a byte near the end so we hit the AEAD tag in
+        // Recommended / Advanced (or the signature region in Intermediate).
+        var tampered = (byte[])lastEnvelope.Clone();
+        var flipIndex = Math.Max(0, tampered.Length - 17);
+        tampered[flipIndex] ^= 0xFF;
+
+        try
+        {
+            byte[] _ = lastEnvelopeProducedBy switch
+            {
+                DemoTab.Recommended  => HybridEnvelope.Open(KemKeys.PrivateKey, tampered),
+                DemoTab.Intermediate => SignedHybridEnvelope.Open(SigKeys.PublicKey, KemKeys.PrivateKey, tampered),
+                DemoTab.Advanced     => OpenAdvancedTampered(tampered),
+                _ => throw new InvalidOperationException(),
+            };
+
+            tamperReceipt = new Receipt
+            {
+                Headline = "Tampered envelope accepted — that would be a bug. Please open an issue.",
+                Lines = new()
+                {
+                    ("Flipped byte at offset", $"{flipIndex}"),
+                    ("Result", "no exception (unexpected)"),
+                },
+            };
+        }
+        catch (System.Security.Cryptography.CryptographicException ex)
+        {
+            tamperReceipt = new Receipt
+            {
+                Headline = "Tampered envelope rejected — fail-closed.",
+                Lines = new()
+                {
+                    ("Flipped byte at offset", $"{flipIndex} (of {tampered.Length} B)"),
+                    ("Exception",              $"{ex.GetType().Name}"),
+                    ("Message",                ex.Message),
+                    ("Why",                    lastEnvelopeProducedBy == DemoTab.Intermediate
+                                                ? "Hybrid signature verification failed before decryption was attempted."
+                                                : "AES-GCM authenticated decryption rejected the tag."),
+                },
+            };
+        }
+    }
+
+    private byte[] OpenAdvancedTampered(byte[] envelopeBytes)
+    {
+        // Replays the manual pipeline against the tampered envelope —
+        // expected to throw CryptographicException at the AES-GCM step
+        // (or earlier at FromBytes if the tamper hit the algorithm-id
+        // byte).
+        const int KemCtBytes = 1121;     // 1 algorithm-id + 32 X25519 + 1088 ML-KEM-768.
+        const int NonceBytes = 12;
+        const int TagBytes   = 16;
+
+        var kemCt  = envelopeBytes[..KemCtBytes];
+        var nonce  = envelopeBytes[KemCtBytes..(KemCtBytes + NonceBytes)];
+        var tagPos = envelopeBytes.Length - TagBytes;
+        var ct     = envelopeBytes[(KemCtBytes + NonceBytes)..tagPos];
+        var tag    = envelopeBytes[tagPos..];
+
+        var ciphertext = HybridKemCiphertext.FromBytes(kemCt);
+        var decapSecret = HybridKem.Decapsulate(KemKeys.PrivateKey, ciphertext);
+
+        var aesKey = new byte[32];
+        try
+        {
+            System.Security.Cryptography.HKDF.Expand(
+                System.Security.Cryptography.HashAlgorithmName.SHA256,
+                decapSecret,
+                aesKey,
+                info: ConcatLabelAndCt("PostQuantum.Hybrid WebApiDemo Advanced AES-256-GCM v1", kemCt));
+
+            var recovered = new byte[ct.Length];
+            using (var aes = new System.Security.Cryptography.AesGcm(aesKey, tag.Length))
+            {
+                aes.Decrypt(nonce, ct, tag, recovered, associatedData: kemCt);
+            }
+            return recovered;
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(aesKey);
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(decapSecret);
+        }
+    }
+
+    private void ClearTransientState()
+    {
+        lastError = null;
+        lastReceipt = null;
+        tamperReceipt = null;
+        lastEnvelope = null;
+    }
+
+    private static byte[] ConcatLabelAndCt(string label, ReadOnlySpan<byte> tail)
+    {
+        var labelBytes = System.Text.Encoding.ASCII.GetBytes(label);
+        var buf = new byte[labelBytes.Length + tail.Length];
+        labelBytes.CopyTo(buf, 0);
+        tail.CopyTo(buf.AsSpan(labelBytes.Length));
+        return buf;
+    }
+
+    private sealed class Receipt
+    {
+        public string Headline { get; init; } = "";
+        public List<(string Key, string Value)> Lines { get; init; } = new();
+        public string? EnvelopeBase64 { get; init; }
+        public string? RecoveredPlaintext { get; init; }
+        public List<DemoStep>? AdvancedSteps { get; init; }
+    }
+
+    private sealed record DemoStep(string Title, string Detail, string AnalyzerNote);
+}
