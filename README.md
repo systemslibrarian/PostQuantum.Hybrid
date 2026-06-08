@@ -21,6 +21,16 @@ without becoming cryptography experts.
   BouncyCastle on .NET 8. Wire-compatible across both.
 - **Dependencies:** `BouncyCastle.Cryptography` only.
 
+> **▶ Live demo — <https://demo.pqhybrid.systemslibrarian.dev>** — Swagger UI at
+> the root. Fetch the server's hybrid KEM and signature public keys, `POST /seal`
+> a plaintext to round-trip an X25519 + ML-KEM-768 + AES-256-GCM envelope, or
+> `POST /sign` to get an Ed25519 + ML-DSA-65 hybrid signature — all in the
+> browser, no install. Runs on Azure Container Apps with the **native .NET 10
+> ML-KEM / ML-DSA path** (OpenSSL 3.6 baked into the image). Hosted scale-to-zero
+> to keep costs near nothing — the first request after idle can take up to a
+> minute to wake; reload if needed. Source:
+> [`samples/WebApiDemo`](samples/WebApiDemo).
+
 ## Why PostQuantum.Hybrid?
 
 - **Safe by default.** Every private-key and encapsulation type is
@@ -136,7 +146,7 @@ order.
 | [`KeyPersistence`](samples/KeyPersistence) | Save and load PEM keys with `TryImportPem` at the trust boundary. |
 | [`SecureMessenger`](samples/SecureMessenger) | End-to-end signed-and-encrypted messaging (Alice → Bob). |
 | [`LargeFileEncryption`](samples/LargeFileEncryption) | Chunked AES-GCM encryption of multi-GB files with one hybrid KEM exchange. |
-| [`WebApiDemo`](samples/WebApiDemo) | ASP.NET Core Minimal API exercising the `AspNetCore` package's DI. |
+| [`WebApiDemo`](samples/WebApiDemo) | ASP.NET Core Minimal API exercising the `AspNetCore` package's DI. **Live at <https://demo.pqhybrid.systemslibrarian.dev>** with Swagger UI at the root — no install needed. |
 | [`KeyRotationDemo`](samples/KeyRotationDemo) | ASP.NET Core + `AddRotatingHybridKemKeys` + a sidecar that rewrites the on-disk PEM files every 15 s. Proves zero-downtime rotation. |
 
 Run any sample with:

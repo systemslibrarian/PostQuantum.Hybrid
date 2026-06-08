@@ -7,6 +7,13 @@ Lets you load hybrid KEM and signature keys from configuration and
 inject them into your controllers and services without writing
 boilerplate.
 
+> **▶ Live demo — <https://demo.pqhybrid.systemslibrarian.dev>** — the
+> [`WebApiDemo`](https://github.com/systemslibrarian/PostQuantum.Hybrid/tree/main/samples/WebApiDemo)
+> sample built on this package, deployed to Azure Container Apps with Swagger
+> UI at the root. Hit `/seal`, `/sign`, and the public-key endpoints in your
+> browser, no install. First request after idle cold-starts in ~1 min
+> (scale-to-zero).
+
 ## Install
 
 ```bash

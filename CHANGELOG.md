@@ -56,6 +56,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   Azure-managed-cert recipe for serving the live demo at
   `demo.pqhybrid.systemslibrarian.dev`. Mirrors the
   PostQuantum.Jwt playground's custom-domain doc.
+- **Live demo now public at <https://demo.pqhybrid.systemslibrarian.dev>.**
+  README and `PostQuantum.Hybrid.AspNetCore` README link to it; the
+  package's `PackageReadmeFile` flows the link onto the NuGet listing
+  page when v1.0.0 ships.
 
 ### Added — analyzer-enforced sample policy
 - `samples/Directory.Build.props` adds `PostQuantum.Hybrid.Analyzers`
