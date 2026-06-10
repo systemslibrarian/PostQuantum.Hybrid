@@ -82,7 +82,7 @@ jobs:
           set -euo pipefail
           GO=interop/go/interop-go
           NET="dotnet interop/dotnet/bin/Release/net10.0/PostQuantum.Hybrid.Interop.dll"
-          if ! $NET --backend=native backend-info >/dev/null 2>&1; then
+          if ! $NET --backend=native mlkem-pubkey "$(openssl rand -hex 64)" >/dev/null 2>&1; then
             echo "native ML-KEM not exposed by this runner's OS (expected on Ubuntu 24.04 / OpenSSL 3.0) — BouncyCastle leg above is the gate"
             exit 0
           fi
