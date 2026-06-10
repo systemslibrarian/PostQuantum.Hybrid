@@ -25,6 +25,19 @@ is required.
 
 Suggestions welcome via GitHub issues.
 
+## Auto-fixes (code-fix providers)
+
+Every rule ships an IDE code-fix provider so the squiggly carries a
+1-keystroke "Quick Actions" remedy in VS / Rider / VS Code:
+
+| ID | Code fix |
+|---|---|
+| **PQH001** | Wrap the declaration in `using` |
+| **PQH002** | Wrap `.SharedSecret` in `HKDF.DeriveKey(SHA256, secret, 32, salt: null, info: /* TODO */)` |
+| **PQH003** | Move the verify guard statement above the `Decapsulate` call |
+| **PQH004** | Wrap the call in `if (!HybridSignature.Verify(...)) throw new CryptographicException("...");` |
+| **PQH005** | Add an `associatedData` argument bound to the in-scope KEM ciphertext (TODO placeholder if none found) |
+
 ## Examples
 
 ### PQH001
