@@ -18,9 +18,9 @@
       "json"
     ],
     "mutate": [
-      "src/PostQuantum.Hybrid/**/*.cs",
-      "!src/PostQuantum.Hybrid/obj/**/*.cs",
-      "!src/PostQuantum.Hybrid/bin/**/*.cs"
+      "**/*.cs",
+      "!**/obj/**/*.cs",
+      "!**/bin/**/*.cs"
     ],
     "mutation-level": "Standard",
     "concurrency": 4
