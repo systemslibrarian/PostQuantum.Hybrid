@@ -5,6 +5,25 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security — zero transient private-key heap copies on the BC fallback
+- Three internal paths created managed-heap copies of private key
+  material via `.ToArray()` and dropped the reference without clearing
+  the bytes, violating the codebase's "zero key material with
+  `CryptographicOperations.ZeroMemory` after use" rule. Fixed in place
+  with the standard `try { ... } finally { ZeroMemory(buf); }` pattern
+  already used elsewhere in the file:
+  - `MlKemBackend.Decapsulate` (BC fallback): 2,400-byte ML-KEM-768 dk
+  - `MlDsaBackend.SignData` (BC fallback): 4,032-byte ML-DSA-65 sk
+  - `Pkcs8SpkiCodec.DecodePkcs8`: full PrivateKeyInfo DER (carries the
+    private OCTET STRING)
+- Native-backend paths (.NET 10 `MLKem` / `MLDsa`) are unaffected — they
+  accept `ReadOnlySpan<byte>` directly and never allocate. The bug
+  ships in v1.0.0, v1.0.1, and v1.1.0. The leaked bytes are transient
+  (one allocation per primitive call, eligible for GC the moment the
+  ASN.1 reader / BC parameter object goes out of scope), so this is
+  a hardening fix, not an active leak — but the rule is meant to
+  close exactly this window.
+
 ### Added — cross-implementation interop now covers ML-DSA-65 as well
 - `.github/workflows/interop.yml` gains an `mldsa` job that runs
   `cloudflare/circl`'s `sign/mldsa/mldsa65` (FIPS 204) against the
