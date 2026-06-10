@@ -5,6 +5,36 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed — `HybridSharedSecret.Clear()` now matches its own contract
+- `Clear()`'s XML doc has always claimed "after this call the secret
+  is equivalent to the default instance; subsequent reads via
+  `AsSpan` return an empty span", but the shipped implementation only
+  zeroed the underlying byte array — `IsEmpty` stayed `false`,
+  `Length` stayed `32`, `AsSpan` returned 32 zero bytes. The type
+  was a `readonly struct`, so `Clear` had no way to reassign the
+  backing field. Dropped the `readonly` qualifier on the struct (and
+  added `readonly` to every non-mutating instance method so the
+  compiler still enforces it where it counts), so `Clear` now nulls
+  the field after zeroing. The XML doc gained a remark noting the
+  struct-copy caveat: only the receiver becomes empty; other copies
+  still see the zeroed bytes through their own reference.
+
+### Fixed — `FakeHybrid{Kem,Signature}KeyProvider` no longer disposes caller-owned keys
+- Both providers in `PostQuantum.Hybrid.TestingSupport` stored a
+  reference to a caller-supplied `HybridKemKeyPair` /
+  `HybridSignatureKeyPair` and unconditionally disposed the private
+  key on `provider.Dispose()`. Combined with
+  `HybridTestKeys.SharedKemPair` / `SharedSignaturePair` (the
+  process-wide shared pairs that "must not be disposed"), wrapping a
+  shared pair in a fake provider would silently poison global state
+  for any later test that touched it. Fixed with an `_ownedPair`
+  field: the pair-argument constructor leaves it `null` (caller
+  retains ownership; `Dispose` is a no-op for the keys); the default
+  constructor stores the generated pair and disposes it on
+  `Dispose`. Six new regression tests cover the survives-provider-
+  dispose and owned-pair-is-disposed cases on both KEM and signature
+  variants.
+
 ### Security — zero transient private-key heap copies on the BC fallback
 - Three internal paths created managed-heap copies of private key
   material via `.ToArray()` and dropped the reference without clearing
