@@ -1,7 +1,8 @@
 // Cross-implementation interop driver: exercises ML-KEM-768 via Go's
-// standard library (crypto/mlkem, FIPS 203) so CI can prove the .NET
-// backends (BouncyCastle and native) agree with an independent
-// implementation. See interop/README.md and .github/workflows/interop.yml.
+// standard library (crypto/mlkem, FIPS 203) and ML-DSA-65 via
+// cloudflare/circl (FIPS 204) so CI can prove the .NET backends agree
+// with independent implementations. See interop/README.md and
+// .github/workflows/interop.yml.
 package main
 
 import (
@@ -9,11 +10,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		die("usage: interop <mlkem-pubkey|mlkem-encap|mlkem-decap> args...")
+		die("usage: interop <subcommand> args... (mlkem-pubkey|mlkem-encap|mlkem-decap|mldsa-pubkey|mldsa-sign|mldsa-verify)")
 	}
 	switch os.Args[1] {
 	case "mlkem-pubkey":
@@ -37,6 +40,29 @@ func main() {
 		ss, err := dk.Decapsulate(ct)
 		check(err)
 		fmt.Println(hex.EncodeToString(ss))
+	case "mldsa-pubkey":
+		// mldsa-pubkey <seed-hex(32B ξ)> -> vk hex
+		pub, _ := mldsaKeys(arg(2))
+		fmt.Println(hex.EncodeToString(pub.Bytes()))
+	case "mldsa-sign":
+		// mldsa-sign <seed-hex(32B)> <msg-hex> -> sig hex (deterministic, empty ctx)
+		_, priv := mldsaKeys(arg(2))
+		msg, err := hex.DecodeString(arg(3))
+		check(err)
+		sig := make([]byte, mldsa65.SignatureSize)
+		check(mldsa65.SignTo(priv, msg, nil, false, sig))
+		fmt.Println(hex.EncodeToString(sig))
+	case "mldsa-verify":
+		// mldsa-verify <vk-hex> <msg-hex> <sig-hex> -> "ok" or exit 1
+		pub := mldsaPub(arg(2))
+		msg, err := hex.DecodeString(arg(3))
+		check(err)
+		sig, err := hex.DecodeString(arg(4))
+		check(err)
+		if !mldsa65.Verify(pub, msg, nil, sig) {
+			die("verify failed")
+		}
+		fmt.Println("ok")
 	default:
 		die("unknown subcommand: " + os.Args[1])
 	}
@@ -48,6 +74,25 @@ func decapKey(seedHex string) *mlkem.DecapsulationKey768 {
 	dk, err := mlkem.NewDecapsulationKey768(seed)
 	check(err)
 	return dk
+}
+
+func mldsaKeys(seedHex string) (*mldsa65.PublicKey, *mldsa65.PrivateKey) {
+	seedBytes, err := hex.DecodeString(seedHex)
+	check(err)
+	if len(seedBytes) != mldsa65.SeedSize {
+		die(fmt.Sprintf("mldsa seed must be %d bytes (got %d)", mldsa65.SeedSize, len(seedBytes)))
+	}
+	var seed [mldsa65.SeedSize]byte
+	copy(seed[:], seedBytes)
+	return mldsa65.NewKeyFromSeed(&seed)
+}
+
+func mldsaPub(pubHex string) *mldsa65.PublicKey {
+	pubBytes, err := hex.DecodeString(pubHex)
+	check(err)
+	pub := new(mldsa65.PublicKey)
+	check(pub.UnmarshalBinary(pubBytes))
+	return pub
 }
 
 func arg(i int) string {

@@ -1,17 +1,22 @@
 name: Cross-implementation interop
 
-# Proves the ML-KEM-768 backend agrees with an INDEPENDENT implementation
-# (Go's standard library crypto/mlkem, FIPS 203) — catching the class of
-# bug where both of our own backends share the same mistake. Three checks,
-# each run for fresh random seeds:
+# Proves the ML-KEM-768 and ML-DSA-65 backends agree with INDEPENDENT
+# implementations — catching the class of bug where both of our own
+# backends share the same mistake.
 #
-#   1. keygen:  same 64-byte (d||z) seed -> identical encapsulation key
-#   2. Go encapsulates  -> .NET decapsulates -> shared secrets match
-#   3. .NET encapsulates -> Go decapsulates  -> shared secrets match
+# ML-KEM-768  vs Go's standard library  crypto/mlkem        (FIPS 203)
+# ML-DSA-65   vs cloudflare/circl       sign/mldsa/mldsa65  (FIPS 204)
+#
+# Each leg runs three checks per fresh random seed:
+#
+#   1. keygen:  same seed -> identical encapsulation/verification key
+#   2. Go produces material -> .NET consumes
+#   3. .NET produces material -> Go consumes
 #
 # The .NET side (interop/dotnet) uses the same primitive calls as the
-# library's MlKemBackend: BouncyCastle on both TFMs, plus the native
-# System.Security.Cryptography.MLKem path when the runner's OS exposes it.
+# library's backends: BouncyCastle on both TFMs, plus the native
+# System.Security.Cryptography.{MLKem,MLDsa} path when the runner's
+# OS exposes it.
 
 on:
   schedule:
@@ -45,7 +50,7 @@ jobs:
       - name: Build both sides
         run: |
           dotnet build interop/dotnet -c Release
-          (cd interop/go && go build -o interop-go .)
+          (cd interop/go && go mod download && go build -o interop-go .)
 
       - name: Run interop checks (BouncyCastle backend, net8.0 + net10.0)
         run: |
@@ -93,5 +98,77 @@ jobs:
             mapfile -t enc2 < <($NET --backend=native mlkem-encap "$ek_go")
             ss_go=$($GO mlkem-decap "$seed" "${enc2[0]}")
             [ "${enc2[1]}" = "$ss_go" ] || { echo "::error::native NET->Go decap mismatch (iter=$i)"; exit 1; }
+          done
+          echo "ok: native 3 iterations x 3 checks"
+
+  mldsa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "stable"
+
+      - name: Build both sides
+        run: |
+          dotnet build interop/dotnet -c Release
+          (cd interop/go && go mod download && go build -o interop-go .)
+
+      - name: Run interop checks (BouncyCastle backend, net8.0 + net10.0)
+        run: |
+          set -euo pipefail
+          GO=interop/go/interop-go
+          for tfm in net8.0 net10.0; do
+            NET="dotnet interop/dotnet/bin/Release/$tfm/PostQuantum.Hybrid.Interop.dll"
+            echo "=== TFM $tfm, backend: $($NET backend-info) ==="
+            for i in 1 2 3 4 5; do
+              seed=$(openssl rand -hex 32)
+              msg=$(openssl rand -hex 64)
+
+              vk_go=$($GO mldsa-pubkey "$seed")
+              vk_net=$($NET mldsa-pubkey "$seed")
+              [ "$vk_go" = "$vk_net" ] || { echo "::error::mldsa keygen mismatch (tfm=$tfm, iter=$i)"; exit 1; }
+
+              sig_go=$($GO mldsa-sign "$seed" "$msg")
+              $NET mldsa-verify "$vk_go" "$msg" "$sig_go" >/dev/null \
+                || { echo "::error::Go->NET mldsa verify failed (tfm=$tfm, iter=$i)"; exit 1; }
+
+              sig_net=$($NET mldsa-sign "$seed" "$msg")
+              $GO mldsa-verify "$vk_go" "$msg" "$sig_net" >/dev/null \
+                || { echo "::error::NET->Go mldsa verify failed (tfm=$tfm, iter=$i)"; exit 1; }
+            done
+            echo "ok: 5 iterations x 3 checks"
+          done
+
+      - name: Run interop checks (native backend, when the OS exposes ML-DSA)
+        run: |
+          set -euo pipefail
+          GO=interop/go/interop-go
+          NET="dotnet interop/dotnet/bin/Release/net10.0/PostQuantum.Hybrid.Interop.dll"
+          if ! $NET --backend=native mldsa-pubkey "$(openssl rand -hex 32)" >/dev/null 2>&1; then
+            echo "native ML-DSA not exposed by this runner's OS (expected on Ubuntu 24.04 / OpenSSL 3.0) — BouncyCastle leg above is the gate"
+            exit 0
+          fi
+          echo "=== net10.0, backend: native ==="
+          for i in 1 2 3; do
+            seed=$(openssl rand -hex 32)
+            msg=$(openssl rand -hex 64)
+            vk_go=$($GO mldsa-pubkey "$seed")
+            vk_net=$($NET --backend=native mldsa-pubkey "$seed")
+            [ "$vk_go" = "$vk_net" ] || { echo "::error::native mldsa keygen mismatch (iter=$i)"; exit 1; }
+            sig_go=$($GO mldsa-sign "$seed" "$msg")
+            $NET --backend=native mldsa-verify "$vk_go" "$msg" "$sig_go" >/dev/null \
+              || { echo "::error::native Go->NET mldsa verify failed (iter=$i)"; exit 1; }
+            sig_net=$($NET --backend=native mldsa-sign "$seed" "$msg")
+            $GO mldsa-verify "$vk_go" "$msg" "$sig_net" >/dev/null \
+              || { echo "::error::native NET->Go mldsa verify failed (iter=$i)"; exit 1; }
           done
           echo "ok: native 3 iterations x 3 checks"

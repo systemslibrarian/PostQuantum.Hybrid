@@ -200,19 +200,31 @@ mechanism that feeds discovered corpus entries back into the seed set.
 committed corpus) so coverage accumulates, and/or stand up a
 long-running fuzz worker separate from CI.
 
-### Cross-implementation interop covers ML-KEM only
+### Cross-implementation interop covers ML-KEM-768 and ML-DSA-65; classical pending
 
-**State:** `.github/workflows/interop.yml` checks the ML-KEM-768
-backends against Go's standard-library `crypto/mlkem` weekly (keygen
-equality from a shared seed + encapsulate/decapsulate in both
-directions). ML-DSA-65 and the classical components (X25519, Ed25519)
-have no cross-implementation leg yet — Go's stdlib does not ship
-ML-DSA, so that check needs a third-party implementation
-(candidate: `cloudflare/circl`).
+**State:** `.github/workflows/interop.yml` runs two weekly jobs:
 
-**Plan:** Add an ML-DSA-65 interop leg (keygen-from-seed equality +
-cross-verification of signatures) once the counterpart implementation
-is chosen.
+1. `mlkem` — ML-KEM-768 vs Go's standard-library `crypto/mlkem` (FIPS
+   203): keygen equality from a shared seed + encapsulate/decapsulate
+   in both directions, on BouncyCastle (net8.0 + net10.0) and the
+   native `System.Security.Cryptography.MLKem` backend when the
+   runner's OS exposes it.
+
+2. `mldsa` — ML-DSA-65 vs `cloudflare/circl`'s `sign/mldsa/mldsa65`
+   (FIPS 204): keygen equality from a shared 32-byte ξ seed + Go signs
+   / .NET verifies + .NET signs / Go verifies, with empty context, on
+   the same BouncyCastle + native matrix.
+
+X25519 and Ed25519 still have no cross-implementation leg in this
+suite. They are covered by the in-repo Wycheproof negative vectors
+(`tests/.../fixtures/wycheproof/`) driven through `HybridKem.Encapsulate`
+and `HybridSignature.Verify`, so the gap is narrower than for the PQ
+primitives but not zero.
+
+**Plan:** Optional — add an X25519/Ed25519 leg against Go's stdlib
+`crypto/ecdh` + `crypto/ed25519` if a future bug suggests our
+BouncyCastle delegation has drifted. Otherwise the Wycheproof coverage
+is treated as sufficient for the classical side.
 
 ### Mutation testing CI shipped with fixed threshold gate
 
