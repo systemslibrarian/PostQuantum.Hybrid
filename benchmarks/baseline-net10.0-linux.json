@@ -1,0 +1,21 @@
+{
+  "$schema": "./baseline.schema.json",
+  "comment": "Reference baseline for benchmark regression detection on the GitHub Actions ubuntu-latest runner (net10.0). Ubuntu 24.04 / OpenSSL 3.0 does not yet expose ML-KEM / ML-DSA, so the net10.0 backend runs BouncyCastle here (per ADR 0012) — that is why these numbers track baseline-net8.0-* more closely than baseline-net10.0-windows. Generated from CI bench workflow (--warmupCount 2 --iterationCount 3 --invocationCount 16). Update when hardware tier / intentional perf shifts.",
+  "platform": {
+    "os": "linux",
+    "tfm": "net10.0",
+    "runner": "ubuntu-latest (GitHub Actions)"
+  },
+  "regressionThreshold": 0.35,
+  "benchmarks": [
+    { "method": "HybridKemBenchmarks.GenerateKeyPair", "meanNs":  790000, "allocatedBytes":  29916 },
+    { "method": "HybridKemBenchmarks.Encapsulate",     "meanNs": 1334000, "allocatedBytes":  36776 },
+    { "method": "HybridKemBenchmarks.Decapsulate",     "meanNs": 1434000, "allocatedBytes":  41696 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=64]",      "meanNs": 5003000, "allocatedBytes": 705886 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=1024]",    "meanNs": 4558000, "allocatedBytes": 745998 },
+    { "method": "HybridSignatureBenchmarks.Sign[MessageSize=65536]",   "meanNs": 4442000, "allocatedBytes": 864775 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=64]",    "meanNs": 1584000, "allocatedBytes": 193656 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=1024]",  "meanNs": 1634000, "allocatedBytes": 195384 },
+    { "method": "HybridSignatureBenchmarks.Verify[MessageSize=65536]", "meanNs": 3715000, "allocatedBytes": 324408 }
+  ]
+}

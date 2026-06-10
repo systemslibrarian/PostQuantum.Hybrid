@@ -244,19 +244,22 @@ place; we rely on the absolute threshold instead.
 the floor we keep raising). Optionally add a per-PR baseline diff if
 the fixed-threshold approach proves too coarse.
 
-### Benchmark baseline + comparison shipped, Linux baseline pending
+### Benchmark baseline + comparison shipped, gate active on Linux
 
 **State:** `.github/workflows/benchmark.yml` runs BenchmarkDotNet
 weekly on both TFMs. `tools/compare-benchmarks.ps1` compares the
-results against pinned `benchmarks/baseline-{tfm}-windows.json`
-files (default regression threshold 25%) and exits non-zero on
-regression. CI invokes the comparison on Linux as
-`continue-on-error: true` until we capture a per-OS baseline (Linux
-numbers differ from Windows numbers measurably).
+results against pinned `benchmarks/baseline-{tfm}-{os}.json` files
+(`baseline-net10.0-linux.json` for the CI gate, `*-windows.json`
+retained for local maintainer use). The Linux gate runs without
+`continue-on-error` — regressions past the per-baseline threshold
+fail the workflow.
 
-**Plan:** Capture a Linux baseline from a run on a standard GH
-runner and switch the comparison from `continue-on-error` to a hard
-fail.
+The Linux threshold is set to 35% (vs 25% on the Windows baselines)
+because the GH-hosted runner tier varies more day-to-day and the CI
+bench uses `--warmupCount 2 --iterationCount 3` for speed.
+
+**Plan:** Tighten the Linux threshold as the runner stabilises (or
+swap to a self-hosted runner if noise becomes the limiting factor).
 
 ## Distribution gaps
 
