@@ -41,6 +41,17 @@ internal static class Pkcs8SpkiCodec
     public const string OidHybridSig       = "1.3.6.1.4.1.32473.1.2.1";
 
     /// <summary>
+    /// <c>id-XWing</c> from the X-Wing draft's ASN.1 module
+    /// (X509-XWING-2024) — a REAL allocated OID, not a placeholder. Used
+    /// for <see cref="HybridKemAlgorithm.XWing"/> (algorithm-id 0x03).
+    /// Per the draft there is no inner ASN.1 wrapping: the SPKI BIT STRING
+    /// is the raw 1216-byte encapsulation key and the PKCS#8 OCTET STRING
+    /// is the raw 32-byte seed (no PostQuantum.Hybrid algorithm-id prefix),
+    /// so the envelopes interoperate with other X-Wing implementations.
+    /// </summary>
+    public const string OidXWing           = "1.3.6.1.4.1.62253.25722";
+
+    /// <summary>
     /// Encodes a SubjectPublicKeyInfo around <paramref name="rawWireFormat"/>.
     /// </summary>
     public static byte[] EncodeSpki(string algorithmOid, ReadOnlySpan<byte> rawWireFormat)

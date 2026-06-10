@@ -228,8 +228,28 @@ using var pair = HybridKem.GenerateKeyPair(HybridKemAlgorithm.X25519MlKem768XWin
 Opt-in only; `HybridKem.Default` stays on the v1 HKDF combiner. The
 v1 component layout is preserved, so the resulting blobs are **not**
 byte-compatible with the IETF X-Wing wire format (PQ-first ordering);
-strict IETF interop is a future algorithm-id. See
+for that, use `HybridKemAlgorithm.XWing` below. See
 [ADR 0013](docs/adr/0013-xwing-combiner-preview.md).
+
+### Strict IETF X-Wing (preview)
+
+Algorithm-id `0x03` is **byte-for-byte IETF X-Wing** per
+[draft-connolly-cfrg-xwing-kem-10](https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/):
+PQ-first wire order (`pk_M || pk_X`, `ct_M || ct_X`) and a 32-byte seed
+as the entire private key, validated against the draft's official test
+vectors on both target frameworks.
+
+```csharp
+using var pair = HybridKem.GenerateKeyPair(HybridKemAlgorithm.XWing);
+```
+
+Strip the 1-byte algorithm-id prefix from any exported blob and you have
+genuine X-Wing bytes for other stacks (CIRCL, libcrux, …); prepend `0x03`
+to foreign X-Wing material to import it. The SPKI / PKCS#8 exports use
+the draft's real `id-XWing` OID (`1.3.6.1.4.1.62253.25722`) with raw
+IETF inner bytes — no prefix — and re-encode Cloudflare CIRCL's
+published fixtures byte-for-byte. Preview until the draft becomes an
+RFC. See [ADR 0015](docs/adr/0015-ietf-xwing-algorithm-id-3.md).
 
 ## Performance
 

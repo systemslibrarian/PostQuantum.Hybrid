@@ -31,6 +31,21 @@ public sealed class HybridKemPrivateKey : IDisposable
         _pqPrivateKey = pqPrivateKey;
     }
 
+    /// <summary>
+    /// Creates an X-Wing (algorithm-id 0x03) private key. The entire
+    /// decapsulation key is the 32-byte seed (draft-connolly-cfrg-xwing-kem);
+    /// it is stored in the pq slot and the classical slot stays empty.
+    /// Takes ownership of <paramref name="seed"/>.
+    /// </summary>
+    internal static HybridKemPrivateKey CreateXWing(byte[] seed) =>
+        new(HybridKemAlgorithm.XWing, Array.Empty<byte>(), seed);
+
+    /// <summary>The 32-byte X-Wing seed (only valid when <see cref="Algorithm"/> is <see cref="HybridKemAlgorithm.XWing"/>).</summary>
+    internal ReadOnlySpan<byte> XWingSeedSpan
+    {
+        get { ThrowIfDisposed(); return _pqPrivateKey; }
+    }
+
     internal ReadOnlySpan<byte> ClassicalKeySpan
     {
         get { ThrowIfDisposed(); return _classicalPrivateKey; }
@@ -48,6 +63,15 @@ public sealed class HybridKemPrivateKey : IDisposable
     public byte[] Export()
     {
         ThrowIfDisposed();
+        if (Algorithm == HybridKemAlgorithm.XWing)
+        {
+            // 0x03 || seed — stripping the prefix yields the IETF X-Wing
+            // decapsulation key byte-for-byte.
+            var xwing = new byte[AlgorithmSizes.XWingHybridPrivateKeyBytes];
+            xwing[0] = (byte)Algorithm;
+            _pqPrivateKey.CopyTo(xwing.AsSpan(1));
+            return xwing;
+        }
         var result = new byte[AlgorithmSizes.HybridKemPrivateKeyBytes];
         result[0] = (byte)Algorithm;
         _classicalPrivateKey.CopyTo(result.AsSpan(1));
@@ -69,28 +93,51 @@ public sealed class HybridKemPrivateKey : IDisposable
         }
     }
 
-    /// <summary>Parses a hybrid KEM private key from its raw wire-format bytes.</summary>
+    /// <summary>
+    /// Parses a hybrid KEM private key from its raw wire-format bytes.
+    /// Dispatch is algorithm-id-first because the expected length differs
+    /// per algorithm (2433 bytes for ids 1–2, 33 bytes for X-Wing).
+    /// </summary>
     public static HybridKemPrivateKey Import(ReadOnlySpan<byte> source)
     {
-        if (source.Length != AlgorithmSizes.HybridKemPrivateKeyBytes)
+        if (source.IsEmpty)
         {
             throw new HybridKeyParseException(
                 HybridFailureReason.InvalidLength,
-                $"Invalid hybrid KEM private-key length: expected {AlgorithmSizes.HybridKemPrivateKeyBytes}, got {source.Length}.");
+                "Invalid hybrid KEM private-key length: blob is empty.");
         }
 
         var algorithm = (HybridKemAlgorithm)source[0];
-        if (algorithm != HybridKemAlgorithm.X25519MlKem768 &&
-            algorithm != HybridKemAlgorithm.X25519MlKem768XWing)
+        switch (algorithm)
         {
-            throw new HybridKeyParseException(
-                HybridFailureReason.UnsupportedAlgorithmId,
-                $"Unsupported hybrid KEM algorithm id: {source[0]}.");
+            case HybridKemAlgorithm.X25519MlKem768:
+            case HybridKemAlgorithm.X25519MlKem768XWing:
+            {
+                if (source.Length != AlgorithmSizes.HybridKemPrivateKeyBytes)
+                {
+                    throw new HybridKeyParseException(
+                        HybridFailureReason.InvalidLength,
+                        $"Invalid hybrid KEM private-key length: expected {AlgorithmSizes.HybridKemPrivateKeyBytes}, got {source.Length}.");
+                }
+                var classical = source.Slice(1, AlgorithmSizes.X25519PrivateKeyBytes).ToArray();
+                var pq = source.Slice(1 + AlgorithmSizes.X25519PrivateKeyBytes, AlgorithmSizes.MlKem768PrivateKeyBytes).ToArray();
+                return new HybridKemPrivateKey(algorithm, classical, pq);
+            }
+            case HybridKemAlgorithm.XWing:
+            {
+                if (source.Length != AlgorithmSizes.XWingHybridPrivateKeyBytes)
+                {
+                    throw new HybridKeyParseException(
+                        HybridFailureReason.InvalidLength,
+                        $"Invalid X-Wing private-key length: expected {AlgorithmSizes.XWingHybridPrivateKeyBytes}, got {source.Length}.");
+                }
+                return CreateXWing(source[1..].ToArray());
+            }
+            default:
+                throw new HybridKeyParseException(
+                    HybridFailureReason.UnsupportedAlgorithmId,
+                    $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }
-
-        var classical = source.Slice(1, AlgorithmSizes.X25519PrivateKeyBytes).ToArray();
-        var pq = source.Slice(1 + AlgorithmSizes.X25519PrivateKeyBytes, AlgorithmSizes.MlKem768PrivateKeyBytes).ToArray();
-        return new HybridKemPrivateKey(algorithm, classical, pq);
     }
 
     /// <summary>Parses a hybrid KEM private key from PEM.</summary>
@@ -142,6 +189,13 @@ public sealed class HybridKemPrivateKey : IDisposable
     public byte[] ExportPkcs8PrivateKey()
     {
         ThrowIfDisposed();
+        if (Algorithm == HybridKemAlgorithm.XWing)
+        {
+            // Real id-XWing OID; per the draft's ASN.1 module the
+            // privateKey OCTET STRING is the raw 32-byte seed with no
+            // inner wrapping — directly consumable by other X-Wing stacks.
+            return Pkcs8SpkiCodec.EncodePkcs8(Pkcs8SpkiCodec.OidXWing, _pqPrivateKey);
+        }
         var oid = Algorithm switch
         {
             HybridKemAlgorithm.X25519MlKem768      => Pkcs8SpkiCodec.OidHybridKemHkdf,
@@ -169,6 +223,16 @@ public sealed class HybridKemPrivateKey : IDisposable
         var (oid, keyBytes) = Pkcs8SpkiCodec.DecodePkcs8(pkcs8Der);
         try
         {
+            if (oid == Pkcs8SpkiCodec.OidXWing)
+            {
+                if (keyBytes.Length != AlgorithmSizes.XWingSeedBytes)
+                {
+                    throw new HybridKeyParseException(
+                        HybridFailureReason.InvalidLength,
+                        $"Invalid X-Wing PKCS#8 seed length: expected {AlgorithmSizes.XWingSeedBytes}, got {keyBytes.Length}.");
+                }
+                return CreateXWing(keyBytes.AsSpan().ToArray());
+            }
             if (oid != Pkcs8SpkiCodec.OidHybridKemHkdf && oid != Pkcs8SpkiCodec.OidHybridKemXWing)
             {
                 throw new HybridKeyParseException(

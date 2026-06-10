@@ -38,15 +38,30 @@ public sealed class HybridKemPublicKey
     {
         var result = new byte[AlgorithmSizes.HybridKemPublicKeyBytes];
         result[0] = (byte)Algorithm;
-        _classicalPublicKey.CopyTo(result.AsSpan(1));
-        _pqPublicKey.CopyTo(result.AsSpan(1 + AlgorithmSizes.X25519PublicKeyBytes));
+        if (Algorithm == HybridKemAlgorithm.XWing)
+        {
+            // IETF X-Wing order: pk_M || pk_X. Stripping the algorithm-id
+            // byte yields the draft's 1216-byte encapsulation key.
+            _pqPublicKey.CopyTo(result.AsSpan(1));
+            _classicalPublicKey.CopyTo(result.AsSpan(1 + AlgorithmSizes.MlKem768PublicKeyBytes));
+        }
+        else
+        {
+            _classicalPublicKey.CopyTo(result.AsSpan(1));
+            _pqPublicKey.CopyTo(result.AsSpan(1 + AlgorithmSizes.X25519PublicKeyBytes));
+        }
         return result;
     }
 
     /// <summary>Serializes this public key as a PEM-encoded string.</summary>
     public string ExportPem() => PemFormatter.Encode(PemLabel, Export());
 
-    /// <summary>Parses a hybrid KEM public key from its raw wire-format bytes.</summary>
+    /// <summary>
+    /// Parses a hybrid KEM public key from its raw wire-format bytes.
+    /// All supported algorithms share the 1217-byte total length; the
+    /// algorithm-id byte determines the component order (classical-first
+    /// for ids 1–2, post-quantum-first for X-Wing).
+    /// </summary>
     public static HybridKemPublicKey Import(ReadOnlySpan<byte> source)
     {
         if (source.Length != AlgorithmSizes.HybridKemPublicKeyBytes)
@@ -57,17 +72,26 @@ public sealed class HybridKemPublicKey
         }
 
         var algorithm = (HybridKemAlgorithm)source[0];
-        if (algorithm != HybridKemAlgorithm.X25519MlKem768 &&
-            algorithm != HybridKemAlgorithm.X25519MlKem768XWing)
+        switch (algorithm)
         {
-            throw new HybridKeyParseException(
-                HybridFailureReason.UnsupportedAlgorithmId,
-                $"Unsupported hybrid KEM algorithm id: {source[0]}.");
+            case HybridKemAlgorithm.X25519MlKem768:
+            case HybridKemAlgorithm.X25519MlKem768XWing:
+            {
+                var classical = source.Slice(1, AlgorithmSizes.X25519PublicKeyBytes).ToArray();
+                var pq = source.Slice(1 + AlgorithmSizes.X25519PublicKeyBytes, AlgorithmSizes.MlKem768PublicKeyBytes).ToArray();
+                return new HybridKemPublicKey(algorithm, classical, pq);
+            }
+            case HybridKemAlgorithm.XWing:
+            {
+                var pq = source.Slice(1, AlgorithmSizes.MlKem768PublicKeyBytes).ToArray();
+                var classical = source.Slice(1 + AlgorithmSizes.MlKem768PublicKeyBytes, AlgorithmSizes.X25519PublicKeyBytes).ToArray();
+                return new HybridKemPublicKey(algorithm, classical, pq);
+            }
+            default:
+                throw new HybridKeyParseException(
+                    HybridFailureReason.UnsupportedAlgorithmId,
+                    $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }
-
-        var classical = source.Slice(1, AlgorithmSizes.X25519PublicKeyBytes).ToArray();
-        var pq = source.Slice(1 + AlgorithmSizes.X25519PublicKeyBytes, AlgorithmSizes.MlKem768PublicKeyBytes).ToArray();
-        return new HybridKemPublicKey(algorithm, classical, pq);
     }
 
     /// <summary>Parses a hybrid KEM public key from PEM.</summary>
@@ -108,6 +132,16 @@ public sealed class HybridKemPublicKey
     /// </summary>
     public byte[] ExportSubjectPublicKeyInfo()
     {
+        if (Algorithm == HybridKemAlgorithm.XWing)
+        {
+            // Real id-XWing OID; per the draft's ASN.1 module the BIT STRING
+            // is the raw 1216-byte pk_M || pk_X with no inner wrapping —
+            // directly consumable by other X-Wing stacks.
+            var raw = new byte[AlgorithmSizes.XWingPublicKeyBytes];
+            _pqPublicKey.CopyTo(raw.AsSpan());
+            _classicalPublicKey.CopyTo(raw.AsSpan(AlgorithmSizes.MlKem768PublicKeyBytes));
+            return Pkcs8SpkiCodec.EncodeSpki(Pkcs8SpkiCodec.OidXWing, raw);
+        }
         var oid = Algorithm switch
         {
             HybridKemAlgorithm.X25519MlKem768      => Pkcs8SpkiCodec.OidHybridKemHkdf,
@@ -124,6 +158,18 @@ public sealed class HybridKemPublicKey
     public static HybridKemPublicKey ImportSubjectPublicKeyInfo(ReadOnlySpan<byte> spkiDer)
     {
         var (oid, keyBytes) = Pkcs8SpkiCodec.DecodeSpki(spkiDer);
+        if (oid == Pkcs8SpkiCodec.OidXWing)
+        {
+            if (keyBytes.Length != AlgorithmSizes.XWingPublicKeyBytes)
+            {
+                throw new HybridKeyParseException(
+                    HybridFailureReason.InvalidLength,
+                    $"Invalid X-Wing SubjectPublicKeyInfo key length: expected {AlgorithmSizes.XWingPublicKeyBytes}, got {keyBytes.Length}.");
+            }
+            var pq = keyBytes.AsSpan(0, AlgorithmSizes.MlKem768PublicKeyBytes).ToArray();
+            var classical = keyBytes.AsSpan(AlgorithmSizes.MlKem768PublicKeyBytes).ToArray();
+            return new HybridKemPublicKey(HybridKemAlgorithm.XWing, classical, pq);
+        }
         if (oid != Pkcs8SpkiCodec.OidHybridKemHkdf && oid != Pkcs8SpkiCodec.OidHybridKemXWing)
         {
             throw new HybridKeyParseException(

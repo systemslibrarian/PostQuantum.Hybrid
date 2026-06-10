@@ -14,6 +14,7 @@ internal static class KemCombiner
     {
         HybridKemAlgorithm.X25519MlKem768      => HkdfTranscriptKemCombiner.Instance,
         HybridKemAlgorithm.X25519MlKem768XWing => XWingKemCombiner.Instance,
+        HybridKemAlgorithm.XWing               => XWingKemCombiner.Instance,
         _ => throw new PostQuantumHybridException(
             HybridFailureReason.UnsupportedAlgorithmId,
             $"No KEM combiner registered for algorithm: {algorithm}."),
@@ -98,14 +99,15 @@ internal sealed class HkdfTranscriptKemCombiner : IKemCombiner
 /// public key.
 /// </summary>
 /// <remarks>
-/// <para><b>This implementation is NOT byte-compatible with the IETF
-/// X-Wing wire format.</b> PostQuantum.Hybrid v1 keeps the
-/// classical-first component ordering for both KEM keys and KEM
-/// ciphertexts at every algorithm-id; the IETF X-Wing draft uses
-/// post-quantum-first ordering. Algorithm-id <c>0x02</c> therefore
-/// represents "the X-Wing combiner applied to PostQuantum.Hybrid's
-/// v1 wire shape," not strict X-Wing interop. See ADR 0013 for the
-/// rationale.</para>
+/// <para>Shared by two algorithm-ids. At <c>0x02</c>
+/// (<see cref="HybridKemAlgorithm.X25519MlKem768XWing"/>) the combiner is
+/// applied to PostQuantum.Hybrid's classical-first v1 wire shape — that
+/// blob is <b>not</b> interoperable with other X-Wing stacks (ADR 0013).
+/// At <c>0x03</c> (<see cref="HybridKemAlgorithm.XWing"/>) the full IETF
+/// X-Wing KEM is implemented — seed-based key, PQ-first wire order — and
+/// the result is byte-for-byte draft-conformant (ADR 0015). The combiner
+/// formula itself is identical in both cases because the inputs are
+/// passed per-component, not as serialized blobs.</para>
 /// <para>SHA3-256 is provided by BouncyCastle so the combiner has
 /// identical behavior on every TFM and host platform — the BCL
 /// <see cref="SHA3_256"/> requires Windows 11 24H2 or an OpenSSL

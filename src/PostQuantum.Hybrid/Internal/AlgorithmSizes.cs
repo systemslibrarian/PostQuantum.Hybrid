@@ -29,6 +29,17 @@ internal static class AlgorithmSizes
     public const int HybridKemCiphertextBytes = 1 + X25519PublicKeyBytes  + MlKem768CiphertextBytes;  // 1121
     public const int HybridSharedSecretBytes  = 32;
 
+    // IETF X-Wing (draft-connolly-cfrg-xwing-kem), algorithm-id 0x03.
+    // Public key and ciphertext sizes coincide with the v1 hybrid sizes
+    // (1217 / 1121 with the algorithm-id byte) but the component order is
+    // post-quantum-first and the private key is a bare 32-byte seed.
+    public const int XWingSeedBytes            = 32;
+    public const int XWingExpandedBytes        = 96;  // SHAKE-256(seed, 96)
+    public const int MlKem768KeyGenSeedBytes   = 64;  // FIPS 203 d || z
+    public const int XWingPublicKeyBytes       = MlKem768PublicKeyBytes + X25519PublicKeyBytes;   // 1216
+    public const int XWingCiphertextBytes      = MlKem768CiphertextBytes + X25519PublicKeyBytes;  // 1120
+    public const int XWingHybridPrivateKeyBytes = 1 + XWingSeedBytes;                             // 33
+
     public const int HybridSigPublicKeyBytes  = 1 + Ed25519PublicKeyBytes  + MlDsa65PublicKeyBytes;   // 1985
     public const int HybridSigPrivateKeyBytes = 1 + Ed25519PrivateKeyBytes + MlDsa65PrivateKeyBytes;  // 4065
     public const int HybridSignatureBytes     = 1 + Ed25519SignatureBytes  + MlDsa65SignatureBytes;   // 3374

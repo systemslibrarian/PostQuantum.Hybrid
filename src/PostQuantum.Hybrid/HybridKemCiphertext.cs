@@ -36,8 +36,18 @@ public sealed class HybridKemCiphertext
     {
         var result = new byte[AlgorithmSizes.HybridKemCiphertextBytes];
         result[0] = (byte)Algorithm;
-        _classicalCiphertext.CopyTo(result.AsSpan(1));
-        _pqCiphertext.CopyTo(result.AsSpan(1 + AlgorithmSizes.X25519PublicKeyBytes));
+        if (Algorithm == HybridKemAlgorithm.XWing)
+        {
+            // IETF X-Wing order: ct_M || ct_X. Stripping the algorithm-id
+            // byte yields the draft's 1120-byte ciphertext.
+            _pqCiphertext.CopyTo(result.AsSpan(1));
+            _classicalCiphertext.CopyTo(result.AsSpan(1 + AlgorithmSizes.MlKem768CiphertextBytes));
+        }
+        else
+        {
+            _classicalCiphertext.CopyTo(result.AsSpan(1));
+            _pqCiphertext.CopyTo(result.AsSpan(1 + AlgorithmSizes.X25519PublicKeyBytes));
+        }
         return result;
     }
 
@@ -52,17 +62,26 @@ public sealed class HybridKemCiphertext
         }
 
         var algorithm = (HybridKemAlgorithm)source[0];
-        if (algorithm != HybridKemAlgorithm.X25519MlKem768 &&
-            algorithm != HybridKemAlgorithm.X25519MlKem768XWing)
+        switch (algorithm)
         {
-            throw new InvalidCiphertextException(
-                HybridFailureReason.UnsupportedAlgorithmId,
-                $"Unsupported hybrid KEM algorithm id: {source[0]}.");
+            case HybridKemAlgorithm.X25519MlKem768:
+            case HybridKemAlgorithm.X25519MlKem768XWing:
+            {
+                var classical = source.Slice(1, AlgorithmSizes.X25519PublicKeyBytes).ToArray();
+                var pq = source.Slice(1 + AlgorithmSizes.X25519PublicKeyBytes, AlgorithmSizes.MlKem768CiphertextBytes).ToArray();
+                return new HybridKemCiphertext(algorithm, classical, pq);
+            }
+            case HybridKemAlgorithm.XWing:
+            {
+                var pq = source.Slice(1, AlgorithmSizes.MlKem768CiphertextBytes).ToArray();
+                var classical = source.Slice(1 + AlgorithmSizes.MlKem768CiphertextBytes, AlgorithmSizes.X25519PublicKeyBytes).ToArray();
+                return new HybridKemCiphertext(algorithm, classical, pq);
+            }
+            default:
+                throw new InvalidCiphertextException(
+                    HybridFailureReason.UnsupportedAlgorithmId,
+                    $"Unsupported hybrid KEM algorithm id: {source[0]}.");
         }
-
-        var classical = source.Slice(1, AlgorithmSizes.X25519PublicKeyBytes).ToArray();
-        var pq = source.Slice(1 + AlgorithmSizes.X25519PublicKeyBytes, AlgorithmSizes.MlKem768CiphertextBytes).ToArray();
-        return new HybridKemCiphertext(algorithm, classical, pq);
     }
 
     /// <summary>Non-throwing counterpart to <see cref="FromBytes"/>.</summary>

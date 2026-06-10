@@ -1,5 +1,6 @@
 #nullable enable
 PostQuantum.Hybrid.HybridKemAlgorithm.X25519MlKem768XWing = 2 -> PostQuantum.Hybrid.HybridKemAlgorithm
+PostQuantum.Hybrid.HybridKemAlgorithm.XWing = 3 -> PostQuantum.Hybrid.HybridKemAlgorithm
 PostQuantum.Hybrid.HybridKemEncapsulationResult.Secret.get -> PostQuantum.Hybrid.HybridSharedSecret
 PostQuantum.Hybrid.HybridSharedSecret
 PostQuantum.Hybrid.HybridSharedSecret.AsSpan() -> System.ReadOnlySpan<byte>

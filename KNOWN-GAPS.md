@@ -79,13 +79,17 @@ informally that it inherits IND-CCA security from each component; we
 do not have a written-up formal proof. The X-Wing combiner — which
 *does* have a published security analysis — ships at algorithm-id
 `0x02` as a preview opt-in via
-`HybridKemAlgorithm.X25519MlKem768XWing`; see
-[ADR 0013](docs/adr/0013-xwing-combiner-preview.md).
+`HybridKemAlgorithm.X25519MlKem768XWing` (see
+[ADR 0013](docs/adr/0013-xwing-combiner-preview.md)), and the full
+IETF X-Wing KEM — wire-interoperable with other implementations and
+validated against the draft's official vectors — ships at `0x03` via
+`HybridKemAlgorithm.XWing` (see
+[ADR 0015](docs/adr/0015-ietf-xwing-algorithm-id-3.md)).
 
 **Impact:** Reviewers of the v1 default surface still must accept the
 informal argument or reference the broader hybrid-KEM literature.
 Callers who want the formal property today can opt in to
-algorithm-id `0x02`.
+algorithm-id `0x02` or `0x03`.
 
 **Plan:** Either commission a write-up for the v1 default, or promote
 the X-Wing combiner to the default in a future major release. The v1

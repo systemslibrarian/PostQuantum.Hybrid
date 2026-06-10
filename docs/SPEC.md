@@ -19,6 +19,7 @@ implementation.
 |---|---|---|
 | Hybrid KEM | `0x01` | `X25519MlKem768` — X25519 (RFC 7748) + ML-KEM-768 (FIPS 203), HKDF-SHA256 combiner |
 | Hybrid KEM | `0x02` | `X25519MlKem768XWing` (**preview**) — same components and byte layout as `0x01`, X-Wing SHA3-256 combiner (see "Combiner") |
+| Hybrid KEM | `0x03` | `XWing` (**preview**) — strict IETF X-Wing (draft-connolly-cfrg-xwing-kem-10): PQ-first byte order, 32-byte seed private key (see "IETF X-Wing") |
 | Hybrid signatures | `0x01` | `Ed25519MlDsa65` — Ed25519 (RFC 8032) + ML-DSA-65 (FIPS 204) |
 
 Each family numbers its identifiers independently. The library refuses to
@@ -128,9 +129,72 @@ transcript must be bound explicitly.
 
 **This is not IETF X-Wing wire interop.** The IETF construction orders
 components post-quantum-first and has its own single-blob encodings; `0x02`
-applies only the X-Wing *combiner formula* to the v1 byte layout. Strict
-IETF X-Wing interop is reserved for a future algorithm-id. See
+applies only the X-Wing *combiner formula* to the v1 byte layout. For strict
+IETF X-Wing interop use algorithm-id `0x03` (next section). See
 `docs/adr/0013-xwing-combiner-preview.md`.
+
+## IETF X-Wing (`XWing`, algorithm-id `0x03`, preview)
+
+Algorithm-id `0x03` is **byte-for-byte IETF X-Wing** per
+[draft-connolly-cfrg-xwing-kem-10](https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/)
+behind the 1-byte algorithm-id prefix. Stripping the prefix yields genuine
+X-Wing bytes consumable by other implementations (CIRCL, libcrux, …);
+prepending `0x03` to foreign X-Wing material makes it importable. See
+`docs/adr/0015-ietf-xwing-algorithm-id-3.md`.
+
+### Wire formats
+
+```
+HybridKemPublicKey  (1217 bytes) := algId(1) || MLKEM768_pub(1184) || X25519_pub(32)
+HybridKemPrivateKey (  33 bytes) := algId(1) || seed(32)
+HybridKemCiphertext (1121 bytes) := algId(1) || MLKEM768_ct(1088)  || X25519_eph_pub(32)
+```
+
+Note the **post-quantum-first** component order (the draft's
+`pk = pk_M || pk_X`, `ct = ct_M || ct_X`) — the reverse of `0x01`/`0x02`.
+Public-key and ciphertext total lengths coincide with `0x01`/`0x02`; the
+algorithm-id byte is the discriminator, so parsers must dispatch on it
+before assuming a component order.
+
+### Key derivation
+
+The entire decapsulation key is the 32-byte `seed`:
+
+```
+expanded = SHAKE-256(seed, 96)
+(MLKEM768_pub, MLKEM768_priv) = MLKEM768.KeyGen_internal(expanded[0:64])   # d || z
+X25519_priv = expanded[64:96]
+X25519_pub  = X25519(X25519_priv, basepoint)
+```
+
+Key generation draws `seed` from a cryptographically secure RNG;
+decapsulation re-expands it per the formulas above.
+
+### Encapsulation / decapsulation
+
+Identical flow to `0x01` (ephemeral X25519 + ML-KEM-768 encapsulation,
+implicit rejection preserved), with the shared secret derived by the X-Wing
+combiner defined for `0x02` above:
+
+```
+sharedSecret = SHA3-256( ss_M || ss_X || X25519_eph_pub || X25519_pub || XWingLabel )
+```
+
+This matches the draft exactly; the implementation passes the draft's
+official test vectors (see "Test vectors").
+
+### ASN.1 encodings (real OID)
+
+Unlike the placeholder OIDs used by `0x01`/`0x02` (ADR 0014), `0x03` uses
+the draft's allocated OID `id-XWing = 1.3.6.1.4.1.62253.25722` with **no
+inner ASN.1 wrapping**:
+
+- `SubjectPublicKeyInfo`: the BIT STRING is the raw 1216-byte
+  `MLKEM768_pub || X25519_pub` (no algorithm-id prefix).
+- PKCS#8 `PrivateKeyInfo`: the OCTET STRING is the raw 32-byte seed.
+
+These envelopes interoperate directly with other X-Wing stacks; the test
+suite re-encodes Cloudflare CIRCL's published fixtures byte-for-byte.
 
 ## Hybrid signatures (`Ed25519MlDsa65`)
 
@@ -197,8 +261,14 @@ not idiomatic.
 
 ## Test vectors (informative)
 
-Because all relevant primitives are randomized, test vectors cannot be made
-deterministic without exposing internal RNG state. The test suite verifies:
+Algorithm-id `0x03` (IETF X-Wing) has deterministic key derivation and
+decapsulation, and the test suite validates both against the draft's three
+official KAT vectors plus the CIRCL x509 fixtures (vendored under
+`tests/PostQuantum.Hybrid.Tests/fixtures/xwing/`).
+
+For `0x01`/`0x02`, all relevant flows are randomized, so test vectors cannot
+be made deterministic without exposing internal RNG state. The test suite
+verifies:
 
 - Sender and receiver agree on the 32-byte shared secret after KEM
   encapsulation/decapsulation.

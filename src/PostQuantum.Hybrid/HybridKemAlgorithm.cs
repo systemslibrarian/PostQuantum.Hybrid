@@ -20,4 +20,17 @@ public enum HybridKemAlgorithm
     /// formally-analyzed combiner; subject to refinement before v2.
     /// </summary>
     X25519MlKem768XWing = 2,
+
+    /// <summary>
+    /// **Preview.** Strict IETF X-Wing per
+    /// <see href="https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/">
+    /// draft-connolly-cfrg-xwing-kem-10</see> (see ADR 0015). Byte-for-byte
+    /// interoperable with other X-Wing implementations once the 1-byte
+    /// algorithm-id prefix is stripped: post-quantum-first component order
+    /// (<c>pk_M || pk_X</c>, <c>ct_M || ct_X</c>) and a 32-byte seed as the
+    /// entire decapsulation key. Preview until the draft becomes an RFC; if
+    /// a later draft changes the scheme, a new algorithm-id will be
+    /// allocated rather than mutating this one.
+    /// </summary>
+    XWing = 3,
 }

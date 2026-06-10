@@ -5,6 +5,29 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — strict IETF X-Wing at algorithm-id `0x03` (preview)
+- New `HybridKemAlgorithm.XWing = 3`: byte-for-byte IETF X-Wing per
+  draft-connolly-cfrg-xwing-kem-10 behind the 1-byte algorithm-id prefix —
+  PQ-first wire order (`pk_M || pk_X`, `ct_M || ct_X`), the 32-byte seed as
+  the entire private key (`SHAKE-256(seed, 96)` expansion at key-gen and
+  decapsulation), and the same SHA3-256 combiner as `0x02`. Stripping the
+  prefix yields genuine X-Wing bytes; prepending `0x03` imports foreign
+  X-Wing material. See [ADR 0015](docs/adr/0015-ietf-xwing-algorithm-id-3.md)
+  and the new SPEC section.
+- SPKI / PKCS#8 for `0x03` use the draft's **real** `id-XWing` OID
+  (`1.3.6.1.4.1.62253.25722`) with raw IETF inner bytes (1216-byte key /
+  32-byte seed, no inner wrapping), interoperable with other X-Wing stacks.
+- Conformance tests vendor the draft's official KAT vectors and Cloudflare
+  CIRCL's x509 fixtures (`tests/.../fixtures/xwing/`): decapsulation matches
+  all three official shared secrets, and our DER re-encodes CIRCL's SPKI and
+  PKCS#8 fixtures byte-for-byte, on both target frameworks and backends.
+- `MlKemBackend` gained seed-based operations (`PublicKeyFromSeed`,
+  `DecapsulateFromSeed`) — native `MLKem.ImportPrivateSeed` on .NET 10,
+  BouncyCastle `MLKemPrivateKeyParameters.FromSeed` otherwise.
+- KEM import dispatch is now algorithm-id-first (private-key lengths differ
+  per algorithm: 2433 bytes for ids 1–2, 33 for X-Wing). Existing `0x01` /
+  `0x02` blobs parse exactly as before.
+
 ### Fixed — **BREAKING for the `0x02` X-Wing preview**: combiner label position
 - The `0x02` (`X25519MlKem768XWing`, preview) combiner hashed the 6-byte
   X-Wing label *first*; the IETF draft moved it to the *end* in draft-03

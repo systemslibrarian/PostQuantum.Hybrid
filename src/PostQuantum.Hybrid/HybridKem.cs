@@ -32,6 +32,15 @@ public static class HybridKem
     {
         EnsureSupported(algorithm);
 
+        if (algorithm == HybridKemAlgorithm.XWing)
+        {
+            // IETF X-Wing: the whole decapsulation key is a 32-byte seed;
+            // everything else is deterministically expanded from it.
+            var seed = new byte[AlgorithmSizes.XWingSeedBytes];
+            RandomNumberGenerator.Fill(seed);
+            return CreateXWingKeyPair(seed);
+        }
+
         // Classical: X25519 via BouncyCastle.
         var keyGen = new X25519KeyPairGenerator();
         keyGen.Init(new X25519KeyGenerationParameters(new SecureRandom()));
@@ -110,6 +119,11 @@ public static class HybridKem
                 $"Algorithm mismatch: private key is {privateKey.Algorithm}, ciphertext is {ciphertext.Algorithm}.");
         }
         EnsureSupported(privateKey.Algorithm);
+
+        if (privateKey.Algorithm == HybridKemAlgorithm.XWing)
+        {
+            return DecapsulateXWing(privateKey, ciphertext);
+        }
 
         // Classical: X25519 agreement between recipient private and ephemeral public.
         // Materialize the recipient's seed into a SecureBuffer that zeroes
@@ -195,12 +209,73 @@ public static class HybridKem
         return TryDecapsulate(privateKey, ciphertext, out sharedSecret);
     }
 
+    /// <summary>
+    /// Builds an X-Wing (algorithm-id 0x03) key pair from a 32-byte seed,
+    /// taking ownership of <paramref name="seed"/> (it becomes the private
+    /// key's material and is zeroed when the key pair is disposed).
+    /// </summary>
+    private static HybridKemKeyPair CreateXWingKeyPair(byte[] seed)
+    {
+        using var mlKemSeed = new SecureBuffer(AlgorithmSizes.MlKem768KeyGenSeedBytes);
+        using var xPriv = new SecureBuffer(AlgorithmSizes.X25519PrivateKeyBytes);
+        XWingKeyExpansion.Expand(seed, mlKemSeed.Span, xPriv.Span);
+
+        var pqPub = MlKemBackend.PublicKeyFromSeed(mlKemSeed.ReadOnlySpan);
+        var classicalPub = new X25519PrivateKeyParameters(xPriv.ReadOnlySpan)
+            .GeneratePublicKey()
+            .GetEncoded();
+
+        var publicKey = new HybridKemPublicKey(HybridKemAlgorithm.XWing, classicalPub, pqPub);
+        var privateKey = HybridKemPrivateKey.CreateXWing(seed);
+        return new HybridKemKeyPair(publicKey, privateKey);
+    }
+
+    /// <summary>
+    /// IETF X-Wing decapsulation: re-expands the 32-byte seed per the draft,
+    /// then runs the same X25519 agreement + ML-KEM decapsulation + SHA3-256
+    /// combiner as the generic path. ML-KEM implicit rejection is preserved.
+    /// </summary>
+    private static byte[] DecapsulateXWing(HybridKemPrivateKey privateKey, HybridKemCiphertext ciphertext)
+    {
+        var classicalSecret = new byte[AlgorithmSizes.X25519SharedSecretBytes];
+        try
+        {
+            using var mlKemSeed = new SecureBuffer(AlgorithmSizes.MlKem768KeyGenSeedBytes);
+            using var xSeed = new SecureBuffer(AlgorithmSizes.X25519PrivateKeyBytes);
+            XWingKeyExpansion.Expand(privateKey.XWingSeedSpan, mlKemSeed.Span, xSeed.Span);
+
+            var recipientClassicalPub = new byte[AlgorithmSizes.X25519PublicKeyBytes];
+            var recipientPriv = new X25519PrivateKeyParameters(xSeed.ReadOnlySpan);
+            var ephemeralPub = new X25519PublicKeyParameters(ciphertext.ClassicalSpan);
+            var agreement = new X25519Agreement();
+            agreement.Init(recipientPriv);
+            agreement.CalculateAgreement(ephemeralPub, classicalSecret, 0);
+            recipientPriv.GeneratePublicKey().Encode(recipientClassicalPub, 0);
+
+            using var pqSecret = new SecureBuffer(AlgorithmSizes.MlKem768SharedSecretBytes);
+            MlKemBackend.DecapsulateFromSeed(mlKemSeed.ReadOnlySpan, ciphertext.PqSpan, pqSecret.Span);
+
+            var combined = new byte[AlgorithmSizes.HybridSharedSecretBytes];
+            KemCombiner.ForAlgorithm(HybridKemAlgorithm.XWing).Combine(
+                classicalSecret, pqSecret.ReadOnlySpan,
+                ciphertext.ClassicalSpan, ciphertext.PqSpan,
+                recipientClassicalPub,
+                combined);
+            return combined;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(classicalSecret);
+        }
+    }
+
     private static void EnsureSupported(HybridKemAlgorithm algorithm)
     {
         switch (algorithm)
         {
             case HybridKemAlgorithm.X25519MlKem768:
             case HybridKemAlgorithm.X25519MlKem768XWing:
+            case HybridKemAlgorithm.XWing:
                 // ML-KEM is always available via the BouncyCastle fallback;
                 // MlKemBackend prefers the native .NET 10 implementation when
                 // MLKem.IsSupported is true and otherwise transparently uses BC.

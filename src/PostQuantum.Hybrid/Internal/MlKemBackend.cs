@@ -71,6 +71,65 @@ internal static class MlKemBackend
         enc.Encapsulate(ciphertext, sharedSecret);
     }
 
+    /// <summary>
+    /// Derives the 1184-byte ML-KEM-768 encapsulation key from a 64-byte
+    /// FIPS 203 keygen seed (<c>d || z</c>). Used by the X-Wing
+    /// (algorithm-id 0x03) seed-expansion flow.
+    /// </summary>
+    public static byte[] PublicKeyFromSeed(ReadOnlySpan<byte> seedDz)
+    {
+#if NET10_0_OR_GREATER
+        if (UseNative)
+        {
+            using var kem = MLKem.ImportPrivateSeed(MLKemAlgorithm.MLKem768, seedDz);
+            return kem.ExportEncapsulationKey();
+        }
+#endif
+        var seed = seedDz.ToArray();
+        try
+        {
+            return MLKemPrivateKeyParameters
+                .FromSeed(MLKemParameters.ml_kem_768, seed)
+                .GetPublicKeyEncoded();
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(seed);
+        }
+    }
+
+    /// <summary>
+    /// Decapsulates against the private key derived from a 64-byte FIPS 203
+    /// keygen seed (<c>d || z</c>). Implicit rejection is preserved by both
+    /// backends. Used by the X-Wing (algorithm-id 0x03) flow.
+    /// </summary>
+    public static void DecapsulateFromSeed(
+        ReadOnlySpan<byte> seedDz,
+        ReadOnlySpan<byte> ciphertext,
+        Span<byte> sharedSecret)
+    {
+#if NET10_0_OR_GREATER
+        if (UseNative)
+        {
+            using var kem = MLKem.ImportPrivateSeed(MLKemAlgorithm.MLKem768, seedDz);
+            kem.Decapsulate(ciphertext, sharedSecret);
+            return;
+        }
+#endif
+        var seed = seedDz.ToArray();
+        try
+        {
+            var priv = MLKemPrivateKeyParameters.FromSeed(MLKemParameters.ml_kem_768, seed);
+            var dec = new MLKemDecapsulator(MLKemParameters.ml_kem_768);
+            dec.Init(priv);
+            dec.Decapsulate(ciphertext, sharedSecret);
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(seed);
+        }
+    }
+
     public static void Decapsulate(
         ReadOnlySpan<byte> privateKey,
         ReadOnlySpan<byte> ciphertext,
