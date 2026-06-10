@@ -59,6 +59,31 @@ jobs:
           dotnet fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.Fuzz.Sharp.dll \
             make-corpus corpus
 
+      # Persistent corpus across weekly runs: each run's AFL queue (the
+      # inputs that exercised new coverage) is folded back into the seed
+      # set for the next run, so coverage accumulates over time instead
+      # of restarting from the minimal-valid seeds every Tuesday. Cache
+      # is keyed per target; misses fall through to seed-only corpus.
+      - name: Restore accumulated corpus for ${{ matrix.target }}
+        uses: actions/cache@v4
+        with:
+          path: persistent-corpus/${{ matrix.target }}
+          key: afl-corpus-v1-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            afl-corpus-v1-${{ matrix.target }}-
+
+      - name: Merge seed + persistent corpus
+        run: |
+          mkdir -p "input/${{ matrix.target }}" "persistent-corpus/${{ matrix.target }}"
+          cp -r "corpus/${{ matrix.target }}/." "input/${{ matrix.target }}/" 2>/dev/null || true
+          # Persistent entries are AFL-queue filenames (id:000000,time:...);
+          # they may collide with seed names, prefix to keep both sets.
+          for f in "persistent-corpus/${{ matrix.target }}"/*; do
+            [ -e "$f" ] || continue
+            cp "$f" "input/${{ matrix.target }}/persistent-$(basename "$f" | tr ':,' '__')"
+          done
+          echo "input corpus size: $(ls input/${{ matrix.target }} | wc -l)"
+
       - name: Instrument PostQuantum.Hybrid.dll
         run: sharpfuzz fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.dll
 
@@ -72,10 +97,29 @@ jobs:
           # .NET startup is slow by AFL standards; give the fork server time.
           AFL_FORKSRV_INIT_TMOUT: "60000"
         run: |
-          afl-fuzz -i "corpus/${{ matrix.target }}" -o findings \
+          afl-fuzz -i "input/${{ matrix.target }}" -o findings \
             -t 10000 -m 10240 -V 1500 \
             -- dotnet fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.Fuzz.Sharp.dll \
             "${{ matrix.target }}"
+
+      # Roll the discovered queue back into the persistent corpus for
+      # next week. afl-cmin trims to a minimal subset that retains the
+      # same edge coverage, keeping cache size bounded.
+      - name: Minimize and persist new queue entries
+        if: success()
+        run: |
+          if [ ! -d findings/default/queue ]; then
+            echo "no AFL queue produced — nothing to persist"
+            exit 0
+          fi
+          rm -rf "persistent-corpus/${{ matrix.target }}"
+          mkdir -p "persistent-corpus/${{ matrix.target }}"
+          afl-cmin -i findings/default/queue -o "persistent-corpus/${{ matrix.target }}" \
+            -t 10000 -m 10240 \
+            -- dotnet fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.Fuzz.Sharp.dll \
+            "${{ matrix.target }}" \
+            || cp -r findings/default/queue/. "persistent-corpus/${{ matrix.target }}/"
+          echo "persisted corpus size: $(ls persistent-corpus/${{ matrix.target }} | wc -l)"
 
       - name: Check for crashes
         run: |

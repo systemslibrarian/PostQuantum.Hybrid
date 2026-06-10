@@ -169,17 +169,19 @@ pipeline with per-purpose AAD binding.
 **Plan:** No further follow-up planned for v1.0. v1.x may add a
 versioned multi-key reader for read-old-write-new rotation patterns.
 
-### `PostQuantum.Hybrid.Analyzers` — five rules shipped, more possible
+### `PostQuantum.Hybrid.Analyzers` — five rules shipped with code-fixes for all five
 
 **State:** v1.0 ships PQH001 (undisposed sensitive types), PQH002
 (SharedSecret without HKDF), PQH003 (Decapsulate-before-Verify
 ordering), PQH004 (ignored Verify result), and PQH005 (AEAD without
-KEM-ciphertext-as-associatedData binding). Code-fix providers are
-included for PQH001 (auto-insert `using`) and PQH004 (auto-wrap in
-`if (!...) throw`).
+KEM-ciphertext-as-associatedData binding). Code-fix providers ship
+for **all five** rules: `AddUsingDeclarationCodeFix` (PQH001),
+`HkdfWrapSharedSecretCodeFix` (PQH002), `MoveVerifyBeforeDecapsulateCodeFix`
+(PQH003), `WrapVerifyCodeFix` (PQH004), and `AddAssociatedDataCodeFix`
+(PQH005).
 
 **Plan:** Additional rules will be added if real-world misuse patterns
-emerge. Code-fixes for PQH002–PQH005 are good follow-ups.
+emerge.
 
 ## Test / CI gaps
 
