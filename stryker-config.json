@@ -23,7 +23,6 @@
       "!src/PostQuantum.Hybrid/bin/**/*.cs"
     ],
     "mutation-level": "Standard",
-    "concurrency": 4,
-    "since": false
+    "concurrency": 4
   }
 }
