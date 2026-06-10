@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-06-10
+
 ### Added — strict IETF X-Wing at algorithm-id `0x03` (preview)
 - New `HybridKemAlgorithm.XWing = 3`: byte-for-byte IETF X-Wing per
   draft-connolly-cfrg-xwing-kem-10 behind the 1-byte algorithm-id prefix —

@@ -3,7 +3,7 @@
   <PropertyGroup>
     <PackageType>Template</PackageType>
     <PackageId>PostQuantum.Hybrid.Templates</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <Title>PostQuantum.Hybrid templates</Title>
     <Authors>Paul Clark</Authors>
     <Description>`dotnet new` templates for starting projects that use PostQuantum.Hybrid: pqhybrid-app (console), pqhybrid-webapi (ASP.NET Core), pqhybrid-envelope (file-encryption CLI). Install with `dotnet new install PostQuantum.Hybrid.Templates`.</Description>
