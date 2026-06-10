@@ -20,9 +20,9 @@ namespace PostQuantum.Hybrid;
 /// boilerplate. It does <em>not</em> implicitly convert to
 /// <see cref="byte"/><c>[]</c> because that would defeat the wrapping.</para>
 /// </remarks>
-public readonly struct HybridSharedSecret
+public struct HybridSharedSecret
 {
-    private readonly byte[]? _bytes;
+    private byte[]? _bytes;
 
     internal HybridSharedSecret(byte[] bytes)
     {
@@ -30,16 +30,16 @@ public readonly struct HybridSharedSecret
     }
 
     /// <summary>Length of the secret in bytes (always 32 for v1).</summary>
-    public int Length => _bytes?.Length ?? 0;
+    public readonly int Length => _bytes?.Length ?? 0;
 
     /// <summary><see langword="true"/> if this is the default / cleared instance.</summary>
-    public bool IsEmpty => _bytes is null || _bytes.Length == 0;
+    public readonly bool IsEmpty => _bytes is null || _bytes.Length == 0;
 
     /// <summary>Returns a read-only view of the secret bytes.</summary>
-    public ReadOnlySpan<byte> AsSpan() => _bytes;
+    public readonly ReadOnlySpan<byte> AsSpan() => _bytes;
 
     /// <summary>Copies the secret into <paramref name="destination"/>.</summary>
-    public void CopyTo(Span<byte> destination)
+    public readonly void CopyTo(Span<byte> destination)
     {
         if (_bytes is null)
         {
@@ -54,7 +54,7 @@ public readonly struct HybridSharedSecret
     /// <see cref="CryptographicOperations.ZeroMemory(Span{byte})"/> after
     /// use, or prefer <see cref="AsSpan"/> / <see cref="CopyTo"/>.
     /// </summary>
-    public byte[] ToArray()
+    public readonly byte[] ToArray()
     {
         if (_bytes is null)
         {
@@ -66,15 +66,28 @@ public readonly struct HybridSharedSecret
     }
 
     /// <summary>
-    /// Zeroes the underlying buffer. After this call the secret is
-    /// equivalent to the default instance; subsequent reads via
-    /// <see cref="AsSpan"/> return an empty span.
+    /// Zeroes the underlying buffer and drops the receiver's reference to
+    /// it. After this call, the receiver is equivalent to the default
+    /// instance: <see cref="IsEmpty"/> is <see langword="true"/>,
+    /// <see cref="Length"/> is <c>0</c>, and <see cref="AsSpan"/> returns
+    /// an empty span.
     /// </summary>
+    /// <remarks>
+    /// <para>Because <see cref="HybridSharedSecret"/> is a struct, the
+    /// "drop the reference" half of the operation only affects the
+    /// receiver — any other copy of this struct that still holds a
+    /// reference to the same backing array will see its bytes zeroed (the
+    /// zero operation is shared because <see cref="byte"/><c>[]</c> is a
+    /// reference type), but its <see cref="IsEmpty"/> / <see cref="Length"/>
+    /// will still report the original size. For full hygiene, clear the
+    /// secret on the variable that the rest of your code uses.</para>
+    /// </remarks>
     public void Clear()
     {
         if (_bytes is not null)
         {
             CryptographicOperations.ZeroMemory(_bytes);
+            _bytes = null;
         }
     }
 

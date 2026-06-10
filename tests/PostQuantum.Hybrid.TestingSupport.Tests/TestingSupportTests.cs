@@ -136,4 +136,70 @@ public class FakeProvidersTests
         var dec = HybridKem.Decapsulate(provider.PrivateKey, enc.Ciphertext);
         Assert.Equal(enc.SharedSecret, dec);
     }
+
+    [Fact]
+    public void FakeKemProvider_PairCtor_DoesNotDisposeCallerOwnedPair()
+    {
+        using var pair = HybridKem.GenerateKeyPair();
+        var provider = new FakeHybridKemKeyProvider(pair);
+        provider.Dispose();
+        // Caller's pair must remain usable.
+        Assert.NotEmpty(pair.PrivateKey.Export());
+        Assert.NotEmpty(pair.PublicKey.Export());
+    }
+
+    [Fact]
+    public void FakeKemProvider_SharedKemPair_SurvivesProviderDispose()
+    {
+        // Regression: wrapping HybridTestKeys.SharedKemPair (process-wide
+        // shared) in a fake provider and disposing the provider must NOT
+        // poison the shared pair.
+        var shared = HybridTestKeys.SharedKemPair;
+        var provider = new FakeHybridKemKeyProvider(shared);
+        provider.Dispose();
+        Assert.NotEmpty(shared.PrivateKey.Export());
+        // The shared pair must still round-trip a fresh encap/decap.
+        using var enc = HybridKem.Encapsulate(shared.PublicKey);
+        var dec = HybridKem.Decapsulate(shared.PrivateKey, enc.Ciphertext);
+        Assert.Equal(enc.SharedSecret, dec);
+    }
+
+    [Fact]
+    public void FakeKemProvider_DefaultCtor_DisposesOwnedPair()
+    {
+        var provider = new FakeHybridKemKeyProvider();
+        var priv = provider.PrivateKey;
+        provider.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => priv.Export());
+    }
+
+    [Fact]
+    public void FakeSignatureProvider_PairCtor_DoesNotDisposeCallerOwnedPair()
+    {
+        using var pair = HybridSignature.GenerateKeyPair();
+        var provider = new FakeHybridSignatureKeyProvider(pair);
+        provider.Dispose();
+        Assert.NotEmpty(pair.PrivateKey.Export());
+        Assert.NotEmpty(pair.PublicKey.Export());
+    }
+
+    [Fact]
+    public void FakeSignatureProvider_SharedSignaturePair_SurvivesProviderDispose()
+    {
+        var shared = HybridTestKeys.SharedSignaturePair;
+        var provider = new FakeHybridSignatureKeyProvider(shared);
+        provider.Dispose();
+        Assert.NotEmpty(shared.PrivateKey.Export());
+        var sig = HybridSignature.Sign(shared.PrivateKey, "abc"u8);
+        Assert.True(HybridSignature.Verify(shared.PublicKey, "abc"u8, sig));
+    }
+
+    [Fact]
+    public void FakeSignatureProvider_DefaultCtor_DisposesOwnedPair()
+    {
+        var provider = new FakeHybridSignatureKeyProvider();
+        var priv = provider.PrivateKey;
+        provider.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => priv.Export());
+    }
 }

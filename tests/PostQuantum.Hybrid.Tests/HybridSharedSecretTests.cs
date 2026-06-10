@@ -66,6 +66,26 @@ public class HybridSharedSecretTests
     }
 
     [Fact]
+    public void Clear_OnLocalVariable_MakesReceiverEquivalentToDefault()
+    {
+        using var pair = HybridKem.GenerateKeyPair();
+        using var enc = HybridKem.Encapsulate(pair.PublicKey);
+
+        var secret = enc.Secret;
+        Assert.False(secret.IsEmpty);
+        Assert.Equal(32, secret.Length);
+        Assert.Equal(32, secret.AsSpan().Length);
+
+        secret.Clear();
+
+        // After Clear, the receiver is equivalent to default(HybridSharedSecret).
+        Assert.True(secret.IsEmpty);
+        Assert.Equal(0, secret.Length);
+        Assert.Equal(0, secret.AsSpan().Length);
+        Assert.Equal(Array.Empty<byte>(), secret.ToArray());
+    }
+
+    [Fact]
     public void Secret_OnDisposedResult_Throws()
     {
         var pair = HybridKem.GenerateKeyPair();
