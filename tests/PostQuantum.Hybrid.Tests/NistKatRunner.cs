@@ -71,7 +71,7 @@ public class NistKatRunner
         var checkedAny = false;
         foreach (var v in vectors)
         {
-            var seed = v.TryGetBytes("seed") ?? CombineSeed(v.TryGetBytes("z"), v.TryGetBytes("d"));
+            var seed = v.TryGetBytes("seed") ?? CombineSeed(v.TryGetBytes("d"), v.TryGetBytes("z"));
             var expectedPk = v.TryGetBytes("pk") ?? v.TryGetBytes("ek");
             if (seed is null || expectedPk is null)
             {
@@ -79,7 +79,7 @@ public class NistKatRunner
             }
             if (seed.Length != 64)
             {
-                continue; // we only accept the FIPS-203 (z||d) seed form
+                continue; // we only accept the FIPS-203 (d||z) seed form
             }
 
             var priv = MLKemPrivateKeyParameters.FromSeed(MLKemParameters.ml_kem_768, seed);
@@ -87,7 +87,7 @@ public class NistKatRunner
             Assert.Equal(expectedPk, actualPk);
             checkedAny = true;
         }
-        Assert.True(checkedAny, "No ML-KEM-768 KAT vectors had the (z||d)+pk shape we accept; check the .rsp file format.");
+        Assert.True(checkedAny, "No ML-KEM-768 KAT vectors had the (d||z)+pk shape we accept; check the .rsp file format.");
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public class NistKatRunner
 
         foreach (var v in vectors)
         {
-            var seed = v.TryGetBytes("seed") ?? CombineSeed(v.TryGetBytes("z"), v.TryGetBytes("d"));
+            var seed = v.TryGetBytes("seed") ?? CombineSeed(v.TryGetBytes("d"), v.TryGetBytes("z"));
             var expectedPk = v.TryGetBytes("pk") ?? v.TryGetBytes("ek");
             if (seed is null || expectedPk is null || seed.Length != 64)
             {
@@ -177,15 +177,17 @@ public class NistKatRunner
     }
 #endif
 
-    private static byte[]? CombineSeed(byte[]? z, byte[]? d)
+    // FIPS 203 / BouncyCastle FromSeed / .NET ImportPrivateSeed all take the
+    // 64-byte seed as d || z (d first). An earlier revision concatenated z || d.
+    private static byte[]? CombineSeed(byte[]? d, byte[]? z)
     {
-        if (z is null || d is null)
+        if (d is null || z is null)
         {
             return null;
         }
-        var combined = new byte[z.Length + d.Length];
-        z.CopyTo(combined.AsSpan());
-        d.CopyTo(combined.AsSpan(z.Length));
+        var combined = new byte[d.Length + z.Length];
+        d.CopyTo(combined.AsSpan());
+        z.CopyTo(combined.AsSpan(d.Length));
         return combined;
     }
 }

@@ -5,6 +5,65 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — continuous fuzzing in CI
+- New `.github/workflows/fuzz.yml`: weekly AFL++ runs of the SharpFuzz
+  harness, one time-boxed matrix job per parser target (7 targets), failing
+  on any crash and uploading findings. The harness gained a `make-corpus`
+  mode that generates one minimal-valid seed blob per target, replacing the
+  (previously empty) checked-in corpus.
+
+### Added — cross-implementation interop checks (Go stdlib)
+- New `interop/` suite + `.github/workflows/interop.yml`: weekly CI proves
+  the ML-KEM-768 backend agrees with Go's standard-library `crypto/mlkem`
+  on fresh random seeds — identical keygen from the same seed, plus
+  encapsulate/decapsulate round-trips in both directions, against
+  BouncyCastle on both TFMs and the native .NET 10 backend where the OS
+  exposes it. Catches "both our backends share the same bug" failures the
+  KAT suites cannot. ML-DSA interop is planned (`KNOWN-GAPS.md`).
+
+### Added — NIST ACVP vectors vendored; published-KAT validation now unconditional
+- New `NistAcvpKatTests` validates BouncyCastle (and the native .NET 10
+  backend where supported) against vendored NIST ACVP gen-val vectors for
+  the final FIPS 203/204 standards: ML-KEM-768 keyGen + decapsulation
+  (incl. implicit rejection), ML-DSA-65 keyGen + sigVer (incl. NIST's
+  negative vectors). Fixtures live under
+  `tests/PostQuantum.Hybrid.Tests/fixtures/nist-acvp/` with provenance in
+  `NOTICE.md`; refresh with `tools/fetch-nist-acvp.ps1`. The
+  `vars.NIST_KAT_MIRROR` operational gap is closed — published-vector
+  validation now runs in every test run.
+
+### Added — Wycheproof negative vectors vendored
+- New `WycheproofTests` runs the Wycheproof (C2SP) vectors against the
+  classical primitives the library delegates to and against the library's
+  own hybrid paths: X25519 agreement (including fail-closed rejection of
+  low-order/all-zero shared secrets, asserted both at the BouncyCastle
+  primitive and through `HybridKem.Encapsulate`), Ed25519 signature
+  malleability/encoding negatives driven through `HybridSignature.Verify`
+  via grafted hybrid blobs, and ML-DSA-65 verify negatives on both
+  backends. Fixtures live under
+  `tests/PostQuantum.Hybrid.Tests/fixtures/wycheproof/` (Apache-2.0, see
+  its `NOTICE.md`); refresh with `tools/fetch-wycheproof.ps1`.
+
+### Fixed — ML-KEM seed ordering in the legacy `.rsp` KAT runner
+- `NistKatRunner` concatenated separate `z`/`d` fields as z‖d; FIPS 203
+  (and BouncyCastle `FromSeed` / .NET `ImportPrivateSeed`) define the
+  64-byte seed as **d‖z**. Latent only — no published `.rsp` files for
+  the final standards exist, so the path had never run against real
+  split-field vectors.
+
+### Fixed — SPEC.md documents algorithm-id `0x02`
+- `docs/SPEC.md` now lists KEM algorithm-id `0x02`
+  (`X25519MlKem768XWing`, preview) in the identifier table and specifies
+  its SHA3-256 combiner formula. The id shipped in ADR 0013 but the
+  normative spec was never updated — a doc-coherence bug.
+
+### Added — build provenance attestations on releases
+- `release.yml` now attests every released `.nupkg` with
+  `actions/attest-build-provenance` (Sigstore). Verify with
+  `gh attestation verify <file>.nupkg --owner systemslibrarian`.
+  `KNOWN-GAPS.md` updated: author signing (Authenticode) remains the
+  open gap; provenance no longer is.
+
 ## [1.0.1] — 2026-06-08
 
 ### Security — secrets removed from ACR build context

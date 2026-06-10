@@ -22,9 +22,9 @@ publicly.
 **Plan:** Switch to native implementations on whatever .NET version first
 exposes them. The public API does not need to change.
 
-### Embedded regression vectors + NIST .rsp runner ship; vector fetch is operational
+### Published-vector validation runs unconditionally; sigGen vectors not covered
 
-**State:** Two layers of FIPS-203/204 validation now ship:
+**State:** Three layers of FIPS-203/204 validation now ship:
 
 1. `NistKatTests` ships three in-repo seed-based regression vectors per
    algorithm. Each vector pins the SHA-256 of both the derived public
@@ -33,26 +33,43 @@ exposes them. The public API does not need to change.
    `MLDsa` paths (when the OS exposes them) and the resulting public
    keys are asserted bit-equal between backends.
 
-2. `NistKatRunner` parses NIST's published `.rsp` KAT format and
-   validates that BouncyCastle (and, where available, the native
-   .NET 10 backend) derives the published bytes from each vector's
-   seed. The runner is gated on the `PQH_NIST_KAT_DIR` environment
-   variable: when unset (the default — most local runs and the
-   regular CI matrix), every test in the runner returns early. The
-   weekly `nist-kats.yml` workflow downloads the files from
-   `vars.NIST_KAT_MIRROR` when configured and runs the runner against
-   them.
+2. `NistAcvpKatTests` validates both backends against **vendored
+   copies of NIST's published ACVP gen-val vectors** for the final
+   standards (`tests/.../fixtures/nist-acvp/`, fetched and filtered to
+   ML-KEM-768 / ML-DSA-65 by `tools/fetch-nist-acvp.ps1`; provenance
+   and license in the fixtures' `NOTICE.md`). Covered: ML-KEM keyGen
+   (ek bit-equality + functional dk check), ML-KEM decapsulation
+   (including NIST's implicit-rejection vectors), ML-DSA keyGen, and
+   ML-DSA sigVer (including NIST's deliberate negative vectors). These
+   run in the normal test suite — a missing fixture fails, it does not
+   skip.
 
-**Impact (residual):** Only the *operational* gap remains. The runner
-itself is in place; for it to actually compare against the real NIST
-published vectors, a maintainer needs to set `vars.NIST_KAT_MIRROR`
-on the repo (a URL serving `ML-KEM-768.zip` / `ML-DSA-65.zip`
-containing the NIST `.rsp` files). Without that, the runner skips
-cleanly and validation falls back to the in-repo regression vectors.
+3. `NistKatRunner` parses the legacy `.rsp` KAT format, gated on
+   `PQH_NIST_KAT_DIR` / `vars.NIST_KAT_MIRROR` — retained for
+   maintainers who want to point it at additional vector files; NIST
+   published the final FIPS-203/204 vectors only in ACVP JSON form,
+   so layer 2 is the authoritative check.
 
-**Plan:** Stand up the mirror (or fold the .rsp files into the repo
-as test fixtures if their license permits) so the published-vector
-check runs unconditionally on the weekly schedule.
+In addition, `WycheproofTests` runs vendored Wycheproof (C2SP) negative
+vectors (`fixtures/wycheproof/`, fetched by `tools/fetch-wycheproof.ps1`)
+covering X25519 (low-order / zero-shared-secret rejection, asserted
+through `HybridKem.Encapsulate` as well as at the primitive), Ed25519
+signature malleability and encoding negatives (driven through
+`HybridSignature.Verify`), and ML-DSA-65 verify negatives on both
+backends. Wycheproof does not ship ML-KEM vectors; candidate extra
+negative material for ML-KEM (e.g. non-canonical encapsulation keys) is
+C2SP/CCTV — not yet vendored, license review pending.
+
+**Impact (residual):** ACVP **sigGen** vectors are not exercised: the
+library signs with randomized ML-DSA ("hedged"), so deterministic
+sigGen vectors would validate a code path we do not ship; sign
+correctness is covered indirectly by sigVer + round-trip tests.
+ML-KEM **encapsulation** AFT vectors (fixed `m`) are also skipped —
+neither backend exposes deterministic encapsulation publicly.
+
+**Plan:** Re-fetch fixtures periodically (the script pins the upstream
+commit SHA) and extend coverage if either backend exposes
+deterministic encapsulation / deterministic signing seams.
 
 ### No formal proof of the v1 default combiner (but X-Wing preview ships)
 
@@ -162,17 +179,36 @@ emerge. Code-fixes for PQH002–PQH005 are good follow-ups.
 
 ## Test / CI gaps
 
-### Coverage-guided fuzzing scaffold shipped, no continuous runner
+### Coverage-guided fuzzing runs weekly in CI, not continuously
 
 **State:** `fuzz/PostQuantum.Hybrid.Fuzz` runs ~7,200 random/mutated
 inputs per execution through every parser entry point and asserts only
 expected exception types fire. `fuzz/PostQuantum.Hybrid.Fuzz.Sharp`
-provides a SharpFuzz harness with 7 targets ready to drive under AFL
-or libFuzzer. We do not yet operate a dedicated machine continuously
-running the harness.
+provides a SharpFuzz harness with 7 targets, and
+`.github/workflows/fuzz.yml` drives all of them under AFL++ weekly —
+one time-boxed (~25 min) matrix job per target, seeded from
+harness-generated minimal-valid blobs, failing on any crash and
+uploading findings as artifacts. What we still do not have is a
+dedicated machine fuzzing continuously between the weekly runs, or a
+mechanism that feeds discovered corpus entries back into the seed set.
 
-**Plan:** Stand up a long-running fuzz worker (separate from CI) and
-publish discovered corpus inputs back to the repo's seed corpus.
+**Plan:** Persist the AFL queue between weekly runs (actions/cache or
+committed corpus) so coverage accumulates, and/or stand up a
+long-running fuzz worker separate from CI.
+
+### Cross-implementation interop covers ML-KEM only
+
+**State:** `.github/workflows/interop.yml` checks the ML-KEM-768
+backends against Go's standard-library `crypto/mlkem` weekly (keygen
+equality from a shared seed + encapsulate/decapsulate in both
+directions). ML-DSA-65 and the classical components (X25519, Ed25519)
+have no cross-implementation leg yet — Go's stdlib does not ship
+ML-DSA, so that check needs a third-party implementation
+(candidate: `cloudflare/circl`).
+
+**Plan:** Add an ML-DSA-65 interop leg (keygen-from-seed equality +
+cross-verification of signatures) once the counterpart implementation
+is chosen.
 
 ### Mutation testing CI shipped with fixed threshold gate
 
@@ -203,13 +239,19 @@ fail.
 
 ## Distribution gaps
 
-### No signed package
+### No author-signed package (provenance attestations ship instead)
 
-**State:** Released NuGet packages are not Authenticode/PGP-signed.
-Builds **are** deterministic and source-linked via SourceLink.
+**State:** Released `.nupkg` files carry **GitHub build provenance
+attestations** (Sigstore): `release.yml` runs
+`actions/attest-build-provenance`, so any consumer can verify a
+package was built by this repo's release workflow from a given tag
+with `gh attestation verify <file>.nupkg --owner systemslibrarian`.
+Builds are deterministic and source-linked via SourceLink. What the
+packages do **not** have is NuGet *author signing*
+(Authenticode) — that requires a paid code-signing certificate.
 
-**Plan:** SignPath integration once the project qualifies. Sigstore
-provenance attestations are also under evaluation.
+**Plan:** SignPath (or another sponsored-cert program) integration for
+author signing once the project qualifies.
 
 ### SBOM CI workflow shipped
 

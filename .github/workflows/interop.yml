@@ -1,0 +1,97 @@
+name: Cross-implementation interop
+
+# Proves the ML-KEM-768 backend agrees with an INDEPENDENT implementation
+# (Go's standard library crypto/mlkem, FIPS 203) — catching the class of
+# bug where both of our own backends share the same mistake. Three checks,
+# each run for fresh random seeds:
+#
+#   1. keygen:  same 64-byte (d||z) seed -> identical encapsulation key
+#   2. Go encapsulates  -> .NET decapsulates -> shared secrets match
+#   3. .NET encapsulates -> Go decapsulates  -> shared secrets match
+#
+# The .NET side (interop/dotnet) uses the same primitive calls as the
+# library's MlKemBackend: BouncyCastle on both TFMs, plus the native
+# System.Security.Cryptography.MLKem path when the runner's OS exposes it.
+
+on:
+  schedule:
+    - cron: "0 7 * * 3"   # Wednesdays 07:00 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "interop/**"
+      - ".github/workflows/interop.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mlkem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "stable"
+
+      - name: Build both sides
+        run: |
+          dotnet build interop/dotnet -c Release
+          (cd interop/go && go build -o interop-go .)
+
+      - name: Run interop checks (BouncyCastle backend, net8.0 + net10.0)
+        run: |
+          set -euo pipefail
+          GO=interop/go/interop-go
+          for tfm in net8.0 net10.0; do
+            NET="dotnet interop/dotnet/bin/Release/$tfm/PostQuantum.Hybrid.Interop.dll"
+            echo "=== TFM $tfm, backend: $($NET backend-info) ==="
+            for i in 1 2 3 4 5; do
+              seed=$(openssl rand -hex 64)
+
+              ek_go=$($GO mlkem-pubkey "$seed")
+              ek_net=$($NET mlkem-pubkey "$seed")
+              [ "$ek_go" = "$ek_net" ] || { echo "::error::keygen mismatch (tfm=$tfm, iter=$i)"; exit 1; }
+
+              mapfile -t enc < <($GO mlkem-encap "$ek_go")
+              ss_net=$($NET mlkem-decap "$seed" "${enc[0]}")
+              [ "${enc[1]}" = "$ss_net" ] || { echo "::error::Go->NET decap mismatch (tfm=$tfm, iter=$i)"; exit 1; }
+
+              mapfile -t enc2 < <($NET mlkem-encap "$ek_go")
+              ss_go=$($GO mlkem-decap "$seed" "${enc2[0]}")
+              [ "${enc2[1]}" = "$ss_go" ] || { echo "::error::NET->Go decap mismatch (tfm=$tfm, iter=$i)"; exit 1; }
+            done
+            echo "ok: 5 iterations x 3 checks"
+          done
+
+      - name: Run interop checks (native backend, when the OS exposes ML-KEM)
+        run: |
+          set -euo pipefail
+          GO=interop/go/interop-go
+          NET="dotnet interop/dotnet/bin/Release/net10.0/PostQuantum.Hybrid.Interop.dll"
+          if ! $NET --backend=native backend-info >/dev/null 2>&1; then
+            echo "native ML-KEM not exposed by this runner's OS (expected on Ubuntu 24.04 / OpenSSL 3.0) — BouncyCastle leg above is the gate"
+            exit 0
+          fi
+          echo "=== net10.0, backend: native ==="
+          for i in 1 2 3; do
+            seed=$(openssl rand -hex 64)
+            ek_go=$($GO mlkem-pubkey "$seed")
+            ek_net=$($NET --backend=native mlkem-pubkey "$seed")
+            [ "$ek_go" = "$ek_net" ] || { echo "::error::native keygen mismatch (iter=$i)"; exit 1; }
+            mapfile -t enc < <($GO mlkem-encap "$ek_go")
+            ss_net=$($NET --backend=native mlkem-decap "$seed" "${enc[0]}")
+            [ "${enc[1]}" = "$ss_net" ] || { echo "::error::native Go->NET decap mismatch (iter=$i)"; exit 1; }
+            mapfile -t enc2 < <($NET --backend=native mlkem-encap "$ek_go")
+            ss_go=$($GO mlkem-decap "$seed" "${enc2[0]}")
+            [ "${enc2[1]}" = "$ss_go" ] || { echo "::error::native NET->Go decap mismatch (iter=$i)"; exit 1; }
+          done
+          echo "ok: native 3 iterations x 3 checks"

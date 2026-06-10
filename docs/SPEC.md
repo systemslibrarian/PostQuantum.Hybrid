@@ -17,7 +17,8 @@ implementation.
 
 | Family | Value | Meaning |
 |---|---|---|
-| Hybrid KEM | `0x01` | `X25519MlKem768` — X25519 (RFC 7748) + ML-KEM-768 (FIPS 203) |
+| Hybrid KEM | `0x01` | `X25519MlKem768` — X25519 (RFC 7748) + ML-KEM-768 (FIPS 203), HKDF-SHA256 combiner |
+| Hybrid KEM | `0x02` | `X25519MlKem768XWing` (**preview**) — same components and byte layout as `0x01`, X-Wing SHA3-256 combiner (see "Combiner") |
 | Hybrid signatures | `0x01` | `Ed25519MlDsa65` — Ed25519 (RFC 8032) + ML-DSA-65 (FIPS 204) |
 
 Each family numbers its identifiers independently. The library refuses to
@@ -99,6 +100,29 @@ The `info` parameter binds the entire transcript so any tampering with either
 ciphertext component yields a different shared secret. This pattern is
 analogous to (but distinct from) the X-Wing construction; see
 `docs/adr/0003-kem-combiner.md` for rationale.
+
+### Combiner at algorithm-id `0x02` (X-Wing, preview)
+
+Algorithm-id `0x02` uses the same key/ciphertext byte layouts as `0x01`
+(classical-first, sizes above) but derives the shared secret with the X-Wing
+combiner from draft-connolly-cfrg-xwing-kem:
+
+```
+sharedSecret = SHA3-256( label6 || ss_M || ss_X || X25519_eph_pub || X25519_pub )
+
+label6 = 0x5c 0x2e 0x2f 0x2f 0x5e 0x5c   (the 6-byte X-Wing label "\.//^\")
+```
+
+`X25519_pub` is the **recipient's** static X25519 public key. Note that
+`MLKEM768_ct` is *not* hashed directly — per the X-Wing analysis, `ss_M`
+already depends on it (ML-KEM is implicitly-rejecting), while the X25519
+transcript must be bound explicitly.
+
+**This is not IETF X-Wing wire interop.** The IETF construction orders
+components post-quantum-first and has its own single-blob encodings; `0x02`
+applies only the X-Wing *combiner formula* to the v1 byte layout. Strict
+IETF X-Wing interop is reserved for a future algorithm-id. See
+`docs/adr/0013-xwing-combiner-preview.md`.
 
 ## Hybrid signatures (`Ed25519MlDsa65`)
 

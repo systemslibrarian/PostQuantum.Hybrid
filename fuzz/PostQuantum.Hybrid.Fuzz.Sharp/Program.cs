@@ -24,6 +24,9 @@
 //   sig-private-key
 //   sig-verify           (verifies the input as a signature against a fresh keypair)
 //   pem-kem-public-key   (drives PEM parsing)
+//
+// Corpus generation (one minimal-valid seed per target, used by CI):
+//   dotnet run --project fuzz/PostQuantum.Hybrid.Fuzz.Sharp -f net10.0 -c Release -- make-corpus <dir>
 // =============================================================================
 
 using PostQuantum.Hybrid;
@@ -31,11 +34,17 @@ using SharpFuzz;
 
 if (args.Length == 0)
 {
-    Console.Error.WriteLine("usage: PostQuantum.Hybrid.Fuzz.Sharp <target>");
+    Console.Error.WriteLine("usage: PostQuantum.Hybrid.Fuzz.Sharp <target> | make-corpus <dir>");
     return 1;
 }
 
 var target = args[0];
+
+if (target == "make-corpus")
+{
+    WriteCorpus(args.Length > 1 ? args[1] : "Corpus");
+    return 0;
+}
 Action<Stream> handler = target switch
 {
     "kem-public-key"     => static s => TryOrSwallow(() => HybridKemPublicKey.Import(ReadAll(s))),
@@ -69,6 +78,28 @@ static byte[] ReadAll(Stream s)
     using var ms = new MemoryStream();
     s.CopyTo(ms);
     return ms.ToArray();
+}
+
+static void WriteCorpus(string root)
+{
+    using var kem = HybridKem.GenerateKeyPair();
+    using var encap = HybridKem.Encapsulate(kem.PublicKey);
+    using var sig = HybridSignature.GenerateKeyPair();
+
+    WriteSeed(root, "kem-public-key", kem.PublicKey.Export());
+    WriteSeed(root, "kem-private-key", kem.PrivateKey.Export());
+    WriteSeed(root, "kem-ciphertext", encap.Ciphertext.ToBytes());
+    WriteSeed(root, "sig-public-key", sig.PublicKey.Export());
+    WriteSeed(root, "sig-private-key", sig.PrivateKey.Export());
+    WriteSeed(root, "sig-verify", HybridSignature.Sign(sig.PrivateKey, "fuzz"u8));
+    WriteSeed(root, "pem-kem-public-key", System.Text.Encoding.ASCII.GetBytes(kem.PublicKey.ExportPem()));
+}
+
+static void WriteSeed(string root, string target, byte[] seed)
+{
+    var dir = Path.Combine(root, target);
+    Directory.CreateDirectory(dir);
+    File.WriteAllBytes(Path.Combine(dir, "seed.bin"), seed);
 }
 
 static void TryOrSwallow(Action action)

@@ -16,4 +16,9 @@
     <ProjectReference Include="..\..\src\PostQuantum.Hybrid\PostQuantum.Hybrid.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Vendored NIST ACVP vectors (see fixtures/nist-acvp/NOTICE.md). -->
+    <None Include="fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

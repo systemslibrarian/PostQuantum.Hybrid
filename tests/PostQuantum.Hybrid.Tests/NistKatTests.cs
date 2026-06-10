@@ -36,7 +36,7 @@ public class NistKatTests
     {
         new object[]
         {
-            // Vector 0: low-byte ramp (z || d = 0x00..0x3f)
+            // Vector 0: low-byte ramp (d || z = 0x00..0x3f)
             Convert.FromHexString(
                 "0001020304050607" + "08090a0b0c0d0e0f" +
                 "1011121314151617" + "18191a1b1c1d1e1f" +

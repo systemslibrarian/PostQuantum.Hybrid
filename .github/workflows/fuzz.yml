@@ -1,0 +1,97 @@
+name: Fuzzing
+
+# Weekly coverage-guided fuzzing of every wire-format parser entry point.
+# Drives the SharpFuzz harness (fuzz/PostQuantum.Hybrid.Fuzz.Sharp) under
+# AFL++, one matrix job per target, time-boxed per run. Any crash (an
+# exception type the parsers are not allowed to throw) fails the job and
+# uploads the crashing inputs as artifacts.
+#
+# Note: ubuntu-latest's OpenSSL does not expose ML-KEM/ML-DSA, so the
+# net10.0 harness exercises the BouncyCastle backend here — which is the
+# right target anyway: the parsers under fuzz are backend-independent,
+# and BouncyCastle is the path that handles attacker-controlled bytes on
+# .NET 8.
+
+on:
+  schedule:
+    - cron: "0 6 * * 2"   # Tuesdays 06:00 UTC (Stryker runs Mondays)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  afl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - kem-public-key
+          - kem-private-key
+          - kem-ciphertext
+          - sig-public-key
+          - sig-private-key
+          - sig-verify
+          - pem-kem-public-key
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Install AFL++ and SharpFuzz CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y afl++
+          dotnet tool install -g SharpFuzz.CommandLine
+
+      - name: Build harness (Release, net10.0)
+        run: dotnet build fuzz/PostQuantum.Hybrid.Fuzz.Sharp -c Release -f net10.0
+
+      - name: Generate seed corpus
+        run: |
+          dotnet fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.Fuzz.Sharp.dll \
+            make-corpus corpus
+
+      - name: Instrument PostQuantum.Hybrid.dll
+        run: sharpfuzz fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.dll
+
+      - name: Fuzz ${{ matrix.target }} (25 min)
+        env:
+          # afl-fuzz refuses to start when the target binary (dotnet) is not
+          # AFL-instrumented; SharpFuzz instruments the managed DLL instead.
+          AFL_SKIP_BIN_CHECK: "1"
+          AFL_SKIP_CPUFREQ: "1"
+          AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES: "1"
+          # .NET startup is slow by AFL standards; give the fork server time.
+          AFL_FORKSRV_INIT_TMOUT: "60000"
+        run: |
+          afl-fuzz -i "corpus/${{ matrix.target }}" -o findings \
+            -t 10000 -m 10240 -V 1500 \
+            -- dotnet fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.Fuzz.Sharp.dll \
+            "${{ matrix.target }}"
+
+      - name: Check for crashes
+        run: |
+          crashes=$(find findings -path '*/crashes/*' -type f ! -name 'README.txt' | wc -l)
+          hangs=$(find findings -path '*/hangs/*' -type f | wc -l)
+          echo "crashes=$crashes hangs=$hangs"
+          if [ "$crashes" -ne 0 ]; then
+            echo "::error::afl-fuzz found $crashes crashing input(s) for target ${{ matrix.target }}"
+            exit 1
+          fi
+
+      - name: Upload findings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-findings-${{ matrix.target }}
+          path: findings/
+          retention-days: 30
+          if-no-files-found: ignore

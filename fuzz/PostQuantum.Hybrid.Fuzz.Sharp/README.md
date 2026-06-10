@@ -6,10 +6,12 @@ public parsers to [SharpFuzz](https://github.com/Metalnem/sharpfuzz)
 so a Linux AFL or libFuzzer driver can discover inputs that exercise
 new code paths.
 
-The harness is not run in normal CI — coverage-guided fuzzing wants
-long, continuous runs on a dedicated machine. The property-style fuzz
-project covers the day-to-day "did this commit introduce a parser
-crash" need.
+The harness runs weekly in CI: `.github/workflows/fuzz.yml` drives
+every target under AFL++ for a time-boxed run (one matrix job per
+target) and fails on any crash. The property-style fuzz project
+covers the day-to-day "did this commit introduce a parser crash"
+need; truly long-running fuzzing on a dedicated machine is still a
+worthwhile upgrade (see `KNOWN-GAPS.md`).
 
 ## Setup (Linux)
 
@@ -30,13 +32,20 @@ sharpfuzz fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hyb
 ## Running
 
 ```bash
-mkdir -p fuzz/PostQuantum.Hybrid.Fuzz.Sharp/Findings
+# Generate one minimal-valid seed per target into corpus/<target>/.
+dotnet fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.Fuzz.Sharp.dll \
+    make-corpus corpus
 
-afl-fuzz \
-    -i fuzz/PostQuantum.Hybrid.Fuzz.Sharp/Corpus \
-    -o fuzz/PostQuantum.Hybrid.Fuzz.Sharp/Findings \
+AFL_SKIP_BIN_CHECK=1 afl-fuzz \
+    -i corpus/kem-public-key \
+    -o findings \
+    -t 10000 -m 10240 \
     -- dotnet fuzz/PostQuantum.Hybrid.Fuzz.Sharp/bin/Release/net10.0/PostQuantum.Hybrid.Fuzz.Sharp.dll kem-public-key
 ```
+
+`AFL_SKIP_BIN_CHECK=1` is required: afl-fuzz checks that the target
+binary is instrumented, but here the *managed DLL* carries the
+instrumentation, not `dotnet` itself.
 
 ## Targets
 
@@ -60,6 +69,8 @@ the fuzzer's `SIGSEGV`-detection trips on them.
 
 ## Seed corpus
 
-The `Corpus/` directory is seeded with one minimal-valid blob per
-target (generated during corpus build). Add interesting inputs there
-to bias the fuzzer toward your area of interest.
+The checked-in `Corpus/` directory is intentionally empty: seeds are
+generated fresh by the harness's `make-corpus` mode (one
+minimal-valid blob per target), both locally and in CI. Add
+interesting inputs to your generated corpus directory to bias the
+fuzzer toward your area of interest.

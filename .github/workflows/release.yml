@@ -23,8 +23,9 @@ jobs:
     environment: nuget
 
     permissions:
-      contents: write   # required by softprops/action-gh-release to attach the .nupkg files
-      id-token: write   # required by NuGet/login: GitHub mints an OIDC token nuget.org will exchange for a 1-hour API key
+      contents: write       # required by softprops/action-gh-release to attach the .nupkg files
+      id-token: write       # required by NuGet/login (OIDC key exchange) and by attest-build-provenance (Sigstore signing)
+      attestations: write   # required by attest-build-provenance to store the provenance attestation
 
     steps:
       - uses: actions/checkout@v6
@@ -62,6 +63,14 @@ jobs:
               -p:ContinuousIntegrationBuild=true \
               -o ./artifacts
           done
+
+      # Sigstore build provenance: lets anyone verify a .nupkg was built by
+      # THIS repo's release workflow from THIS tag —
+      #   gh attestation verify <file>.nupkg --owner systemslibrarian
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: artifacts/*.nupkg
 
       - name: Upload artifacts to GitHub release
         uses: softprops/action-gh-release@v3
