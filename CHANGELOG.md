@@ -5,6 +5,46 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — cross-implementation interop now covers ML-DSA-65 as well
+- `.github/workflows/interop.yml` gains an `mldsa` job that runs
+  `cloudflare/circl`'s `sign/mldsa/mldsa65` (FIPS 204) against the
+  library's backends on each weekly tick: same 32-byte ξ seed →
+  identical 1952-byte verification key, Go signs / .NET verifies,
+  .NET signs / Go verifies (BouncyCastle on net8.0 + net10.0; native
+  `System.Security.Cryptography.MLDsa` where the runner's OS exposes
+  it). The Go module gains `cloudflare/circl` as its first non-stdlib
+  dependency.
+
+### Changed — AFL queue persisted across weekly fuzz runs
+- `.github/workflows/fuzz.yml` adds an `actions/cache` layer per
+  target so the inputs the AFL queue discovered last week are folded
+  back into the seed corpus for the next run. `afl-cmin` trims to a
+  minimal-coverage subset before save so the persisted set does not
+  grow unboundedly.
+
+### Changed — Linux benchmark regression gate is now active
+- Captures `benchmarks/baseline-net10.0-linux.json` (ADR-0012-aware:
+  BC backend on Ubuntu 24.04) and points the comparison step at it
+  with `continue-on-error` dropped. Threshold is wider (0.35 vs
+  Windows' 0.25) to absorb GH runner tier variance.
+
+### Fixed — mutation testing CI gate
+- `.github/workflows/mutation.yml` now runs Stryker from the repo
+  root so `stryker-config.json` is actually loaded (previous
+  `working-directory: src/PostQuantum.Hybrid` override silently
+  bypassed the config). Pinned `dotnet-stryker` to 4.14.2 so weekly
+  runs reflect a fixed version. Dropped `"since": false` from
+  `stryker-config.json` (Stryker 4.x rejects the bool form). The
+  gate has never fired since it was committed; both prior runs in CI
+  history failed with "Failed to analyze project builds".
+
+### Changed — analyzer README documents all five code-fixes
+- The README claimed only PQH001 and PQH004 had auto-fixes; in fact
+  every rule ships a code-fix provider (`AddUsingDeclarationCodeFix`,
+  `HkdfWrapSharedSecretCodeFix`, `MoveVerifyBeforeDecapsulateCodeFix`,
+  `WrapVerifyCodeFix`, `AddAssociatedDataCodeFix`). New table at the
+  top of the README.
+
 ## [1.1.0] — 2026-06-10
 
 ### Added — strict IETF X-Wing at algorithm-id `0x03` (preview)
