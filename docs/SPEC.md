@@ -108,10 +108,18 @@ Algorithm-id `0x02` uses the same key/ciphertext byte layouts as `0x01`
 combiner from draft-connolly-cfrg-xwing-kem:
 
 ```
-sharedSecret = SHA3-256( label6 || ss_M || ss_X || X25519_eph_pub || X25519_pub )
+sharedSecret = SHA3-256( ss_M || ss_X || X25519_eph_pub || X25519_pub || XWingLabel )
 
-label6 = 0x5c 0x2e 0x2f 0x2f 0x5e 0x5c   (the 6-byte X-Wing label "\.//^\")
+XWingLabel = 0x5c 0x2e 0x2f 0x2f 0x5e 0x5c   (the 6-byte X-Wing label "\.//^\", hashed last)
 ```
+
+> **History:** releases up to and including v1.0.1 hashed the label *first*
+> (`SHA3-256(label || ss_M || ...)`). The current X-Wing draft moved the
+> label to the end (draft-03 changelog: "Move label at the end"; unchanged
+> through draft-10), so the 0x02 **preview** combiner was corrected to
+> label-last after v1.0.1. Secrets derived at `0x02` by v1.0.1 differ from
+> those derived by later versions — mixed-version peers fail closed at the
+> AEAD layer. Algorithm-id `0x01` is unaffected.
 
 `X25519_pub` is the **recipient's** static X25519 public key. Note that
 `MLKEM768_ct` is *not* hashed directly — per the X-Wing analysis, `ss_M`

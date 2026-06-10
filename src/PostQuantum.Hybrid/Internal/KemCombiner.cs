@@ -89,9 +89,9 @@ internal sealed class HkdfTranscriptKemCombiner : IKemCombiner
 /// <see href="https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/">
 /// draft-connolly-cfrg-xwing-kem</see> formula:
 /// <code>
-/// SS = SHA3-256( label6 || ss_M || ss_X || ct_X || pk_X )
+/// SS = SHA3-256( ss_M || ss_X || ct_X || pk_X || XWingLabel )
 /// </code>
-/// where <c>label6</c> is the 6-byte fixed prefix from the draft,
+/// where <c>XWingLabel</c> is the 6-byte fixed suffix from the draft,
 /// <c>ss_M</c> is the ML-KEM-768 shared secret, <c>ss_X</c> is the X25519
 /// shared secret, <c>ct_X</c> is the X25519 "ciphertext" (the sender's
 /// ephemeral public key), and <c>pk_X</c> is the recipient's X25519
@@ -117,7 +117,8 @@ internal sealed class XWingKemCombiner : IKemCombiner
     public static IKemCombiner Instance { get; } = new XWingKemCombiner();
 
     /// <summary>
-    /// The 6-byte fixed label from draft-connolly-cfrg-xwing-kem section 5.
+    /// The 6-byte XWingLabel ("\.//^\") from the draft's Combiner section.
+    /// Hashed LAST, per draft-03 and later ("Move label at the end").
     /// </summary>
     private static readonly byte[] Label = { 0x5c, 0x2e, 0x2f, 0x2f, 0x5e, 0x5c };
 
@@ -144,7 +145,6 @@ internal sealed class XWingKemCombiner : IKemCombiner
         }
 
         var sha3 = new Sha3Digest(256);
-        sha3.BlockUpdate(Label, 0, Label.Length);
         // ss_M (ML-KEM shared secret)
         var pqBuf = pqSecret.ToArray();
         sha3.BlockUpdate(pqBuf, 0, pqBuf.Length);
@@ -159,6 +159,8 @@ internal sealed class XWingKemCombiner : IKemCombiner
         // pk_X (recipient's X25519 public)
         var pkBuf = recipientClassicalPublicKey.ToArray();
         sha3.BlockUpdate(pkBuf, 0, pkBuf.Length);
+        // XWingLabel, hashed last per the current draft
+        sha3.BlockUpdate(Label, 0, Label.Length);
 
         var digest = new byte[AlgorithmSizes.HybridSharedSecretBytes];
         sha3.DoFinal(digest, 0);

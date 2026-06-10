@@ -5,6 +5,20 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed — **BREAKING for the `0x02` X-Wing preview**: combiner label position
+- The `0x02` (`X25519MlKem768XWing`, preview) combiner hashed the 6-byte
+  X-Wing label *first*; the IETF draft moved it to the *end* in draft-03
+  ("Move label at the end") and it has stayed there through draft-10. The
+  combiner now matches the current draft:
+  `SHA3-256(ss_M || ss_X || ct_X || pk_X || XWingLabel)`.
+- **Impact:** shared secrets derived at `0x02` by v1.0.1 differ from those
+  derived by this version. Keys and ciphertexts still parse (wire layouts
+  are unchanged); mixed-version peers fail closed at the AEAD layer. The
+  default `0x01` algorithm is unaffected. `0x02` is a preview member,
+  documented as subject to refinement — see the amendment in
+  [ADR 0013](docs/adr/0013-xwing-combiner-preview.md) and the History note
+  in `docs/SPEC.md`.
+
 ### Added — continuous fuzzing in CI
 - New `.github/workflows/fuzz.yml`: weekly AFL++ runs of the SharpFuzz
   harness, one time-boxed matrix job per parser target (7 targets), failing

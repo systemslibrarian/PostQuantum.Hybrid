@@ -27,6 +27,9 @@ ciphertexts can sometimes create cross-session attacks. Insufficient.
 SS = SHA3-256(label || ss_M || X25519(eph_priv, recipient_pub) || eph_pub || recipient_pub)
 ```
 
+*(Note, 2026-06-10: the formula above reflects the early draft; the current
+IETF draft hashes the label **last**. See the amendment in ADR 0013.)*
+
 A published, peer-reviewed construction with a tight IND-CCA proof. It is
 *specifically* designed for X25519 + ML-KEM-768. The drawback for us:
 SHA3-256 is not in the BCL on every TFM, requiring BouncyCastle or

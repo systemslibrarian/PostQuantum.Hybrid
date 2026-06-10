@@ -25,11 +25,11 @@ backed by `XWingKemCombiner` (an `IKemCombiner` implementation that
 produces the derived secret as:
 
 ```
-SS = SHA3-256( label6 || ss_M || ss_X || ct_X || pk_X )
+SS = SHA3-256( ss_M || ss_X || ct_X || pk_X || XWingLabel )
 ```
 
-where `label6` is the 6-byte literal `\x5c\x2e\x2f\x2f\x5e\x5c` from
-section 5 of the X-Wing draft, `ss_M` is the ML-KEM-768 shared secret,
+where `XWingLabel` is the 6-byte literal `\x5c\x2e\x2f\x2f\x5e\x5c` from
+the Combiner section of the X-Wing draft, `ss_M` is the ML-KEM-768 shared secret,
 `ss_X` is the X25519 shared secret, `ct_X` is the X25519 "ciphertext"
 (sender's ephemeral public key), and `pk_X` is the recipient's X25519
 public key.
@@ -108,3 +108,23 @@ the algorithm-id level.
 - An ADR for a future strict IETF X-Wing interop algorithm-id (`0x03`?)
   will reference this one. Until that lands, v1.x users that want
   cross-implementation interop should stay on `X25519MlKem768`.
+
+## Amendment (2026-06-10): label position corrected to match the draft
+
+As shipped in v1.0.1, `XWingKemCombiner` hashed the label **first**
+(`SHA3-256(label || ss_M || ss_X || ct_X || pk_X)`). That order matched
+draft-connolly-cfrg-xwing-kem-02; draft-03 moved the label to the **end**
+("Move label at the end. As everything fits within a single block of
+SHA3-256, this does not make any difference."), and it has stayed there
+through draft-10 (March 2026), which was verified directly against the
+draft source on 2026-06-10.
+
+The two orders are security-equivalent but derive different secrets, so
+the v1.0.1 combiner did not match the construction whose published
+analysis this ADR cites. Because `0x02` is explicitly a preview member
+("subject to refinement before v2"), has no cross-library interop by
+design, and the wire layouts are unchanged (blobs parse identically —
+only the derived secret differs, and mixed-version peers fail closed at
+the AEAD layer), the combiner was corrected **in place** rather than
+burning a new algorithm-id. SPEC.md records the v1.0.1 divergence under
+"History".
