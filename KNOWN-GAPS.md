@@ -194,13 +194,16 @@ provides a SharpFuzz harness with 7 targets, and
 `.github/workflows/fuzz.yml` drives all of them under AFL++ weekly —
 one time-boxed (~25 min) matrix job per target, seeded from
 harness-generated minimal-valid blobs, failing on any crash and
-uploading findings as artifacts. What we still do not have is a
-dedicated machine fuzzing continuously between the weekly runs, or a
-mechanism that feeds discovered corpus entries back into the seed set.
+uploading findings as artifacts. The AFL queue is now persisted between
+runs (`actions/cache`, per-target, `afl-cmin`-minimized before save)
+so coverage accumulates rather than restarting from minimal seeds each
+Tuesday. What we still do not have is a dedicated machine fuzzing
+continuously between the weekly runs.
 
-**Plan:** Persist the AFL queue between weekly runs (actions/cache or
-committed corpus) so coverage accumulates, and/or stand up a
-long-running fuzz worker separate from CI.
+**Plan:** Optional — stand up a long-running fuzz worker separate
+from CI if the weekly cadence ever surfaces a class of bug that
+several weeks of continuous coverage would have caught sooner. The
+persisted-queue path closes the in-CI half of this gap.
 
 ### Cross-implementation interop covers ML-KEM-768 and ML-DSA-65; classical pending
 
