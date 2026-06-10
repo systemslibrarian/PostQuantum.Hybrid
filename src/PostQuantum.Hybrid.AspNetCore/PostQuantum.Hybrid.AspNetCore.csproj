@@ -17,7 +17,7 @@
 
     <IsPackable>true</IsPackable>
     <PackageId>PostQuantum.Hybrid.AspNetCore</PackageId>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Authors>Paul Clark</Authors>
     <Description>ASP.NET Core extensions for PostQuantum.Hybrid: dependency-injection helpers for loading hybrid KEM and signature keys from configuration, plus opinionated IHybridKeyProvider abstractions.</Description>
     <PackageTags>aspnetcore;dependency-injection;cryptography;post-quantum;pqc;hybrid;PostQuantum.Hybrid</PackageTags>

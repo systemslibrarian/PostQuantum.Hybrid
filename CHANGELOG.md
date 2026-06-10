@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-06-10
+
 ### Fixed — `HybridSharedSecret.Clear()` now matches its own contract
 - `Clear()`'s XML doc has always claimed "after this call the secret
   is equivalent to the default instance; subsequent reads via
