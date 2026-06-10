@@ -121,27 +121,37 @@ internal static class Pkcs8SpkiCodec
 
     /// <summary>
     /// Decodes a PrivateKeyInfo, returning the algorithm OID and the
-    /// inner key bytes.
+    /// inner key bytes. The transient DER copy taken for the
+    /// <see cref="AsnReader"/> (PKCS#8 carries private key material) is
+    /// zeroed before returning.
     /// </summary>
     public static (string Oid, byte[] KeyBytes) DecodePkcs8(ReadOnlySpan<byte> pkcs8Der)
     {
-        var reader = new AsnReader(pkcs8Der.ToArray(), AsnEncodingRules.DER);
-        var info = reader.ReadSequence();
-        reader.ThrowIfNotEmpty();
-
-        var version = info.ReadInteger();
-        if (version != System.Numerics.BigInteger.Zero)
+        var pkcs8Buf = pkcs8Der.ToArray();
+        try
         {
-            throw new AsnContentException($"PrivateKeyInfo: unsupported version {version}.");
+            var reader = new AsnReader(pkcs8Buf, AsnEncodingRules.DER);
+            var info = reader.ReadSequence();
+            reader.ThrowIfNotEmpty();
+
+            var version = info.ReadInteger();
+            if (version != System.Numerics.BigInteger.Zero)
+            {
+                throw new AsnContentException($"PrivateKeyInfo: unsupported version {version}.");
+            }
+
+            var algId = info.ReadSequence();
+            var oid = algId.ReadObjectIdentifier();
+            while (algId.HasData) { algId.ReadEncodedValue(); }
+
+            var keyBytes = info.ReadOctetString();
+            // Optional attributes: ignore.
+            while (info.HasData) { info.ReadEncodedValue(); }
+            return (oid, keyBytes);
         }
-
-        var algId = info.ReadSequence();
-        var oid = algId.ReadObjectIdentifier();
-        while (algId.HasData) { algId.ReadEncodedValue(); }
-
-        var keyBytes = info.ReadOctetString();
-        // Optional attributes: ignore.
-        while (info.HasData) { info.ReadEncodedValue(); }
-        return (oid, keyBytes);
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(pkcs8Buf);
+        }
     }
 }

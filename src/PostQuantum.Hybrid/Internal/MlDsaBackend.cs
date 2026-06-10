@@ -63,11 +63,19 @@ internal static class MlDsaBackend
             return sig;
         }
 #endif
-        var priv = MLDsaPrivateKeyParameters.FromEncoding(MLDsaParameters.ml_dsa_65, privateKey.ToArray());
-        var signer = new MLDsaSigner(MLDsaParameters.ml_dsa_65, deterministic: false);
-        signer.Init(forSigning: true, priv);
-        signer.BlockUpdate(data);
-        return signer.GenerateSignature();
+        var privBuf = privateKey.ToArray();
+        try
+        {
+            var priv = MLDsaPrivateKeyParameters.FromEncoding(MLDsaParameters.ml_dsa_65, privBuf);
+            var signer = new MLDsaSigner(MLDsaParameters.ml_dsa_65, deterministic: false);
+            signer.Init(forSigning: true, priv);
+            signer.BlockUpdate(data);
+            return signer.GenerateSignature();
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(privBuf);
+        }
     }
 
     public static bool VerifyData(

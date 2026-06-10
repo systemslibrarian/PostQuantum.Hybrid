@@ -143,9 +143,17 @@ internal static class MlKemBackend
             return;
         }
 #endif
-        var priv = MLKemPrivateKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, privateKey.ToArray());
-        var dec = new MLKemDecapsulator(MLKemParameters.ml_kem_768);
-        dec.Init(priv);
-        dec.Decapsulate(ciphertext, sharedSecret);
+        var privBuf = privateKey.ToArray();
+        try
+        {
+            var priv = MLKemPrivateKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, privBuf);
+            var dec = new MLKemDecapsulator(MLKemParameters.ml_kem_768);
+            dec.Init(priv);
+            dec.Decapsulate(ciphertext, sharedSecret);
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(privBuf);
+        }
     }
 }
