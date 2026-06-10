@@ -87,11 +87,20 @@ jobs:
             exit 1
           fi
 
+      # AFL++ names queue entries like "id:000000,time:0,..."; upload-artifact
+      # rejects colons in paths, so pack the findings into a tarball first.
+      - name: Pack findings
+        if: always()
+        run: |
+          if [ -d findings ]; then
+            tar czf "fuzz-findings-${{ matrix.target }}.tar.gz" findings
+          fi
+
       - name: Upload findings
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: fuzz-findings-${{ matrix.target }}
-          path: findings/
+          path: fuzz-findings-${{ matrix.target }}.tar.gz
           retention-days: 30
           if-no-files-found: ignore
