@@ -65,7 +65,7 @@ jobs:
       # of restarting from the minimal-valid seeds every Tuesday. Cache
       # is keyed per target; misses fall through to seed-only corpus.
       - name: Restore accumulated corpus for ${{ matrix.target }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: persistent-corpus/${{ matrix.target }}
           key: afl-corpus-v1-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
