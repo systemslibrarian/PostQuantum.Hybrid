@@ -2,9 +2,10 @@
 
 [![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/systemslibrarian.postquantum-hybrid-snippets?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=systemslibrarian.postquantum-hybrid-snippets) [![Installs](https://img.shields.io/visual-studio-marketplace/i/systemslibrarian.postquantum-hybrid-snippets?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=systemslibrarian.postquantum-hybrid-snippets)
 
-C# snippets for the [PostQuantum.Hybrid](https://github.com/systemslibrarian/PostQuantum.Hybrid) library — hybrid post-quantum cryptography (X25519 + ML-KEM-768 for KEM, Ed25519 + ML-DSA-65 for signatures) on .NET 8 and .NET 10.
+C# snippets for the [PostQuantum.Hybrid](https://github.com/systemslibrarian/PostQuantum.Hybrid) library — hybrid post-quantum cryptography (X25519 + ML-KEM-768 for KEM, Ed25519 + ML-DSA-65 for signatures) on .NET 8 and .NET 10 — **and** for the
+[PostQuantum.FileEncryption](https://github.com/systemslibrarian/postquantum-file-encryption) family (fail-closed file/stream encryption, passphrase-protected key files, detached signing, DI, KMS envelopes).
 
-Every snippet follows the secure patterns the **PQH001 – PQH005** Roslyn analyzers (shipped in `PostQuantum.Hybrid.Analyzers`) enforce — so the generated code is analyzer-clean and secure by default.
+Every snippet follows the secure patterns the libraries' Roslyn analyzers enforce — **PQH001 – PQH005** (`PostQuantum.Hybrid.Analyzers`) and **PQFE101 – PQFE104** (`PostQuantum.FileEncryption.Analyzers`) — so the generated code is analyzer-clean and secure by default.
 
 This version focuses on the repo's safest default surfaces first: `Envelopes` for application code, `AspNetCore` DI/rotation for services, and readiness-friendly patterns for production hardening.
 
@@ -36,6 +37,23 @@ Recommended starting points:
 | `pqh-aspnet-rotate` | `AddRotatingHybridKemKeys` registration for zero-downtime KEM key rotation. |
 | `pqh-readiness-check` | Startup smoke test that exercises a real signed-envelope seal/open flow. |
 
+### PostQuantum.FileEncryption (`pqfe-*`)
+
+Snippets for the file-encryption family, aligned with its
+[cookbook](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COOKBOOK.md)
+and [anti-patterns](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ANTI-PATTERNS.md) docs:
+
+| Prefix | What it expands to |
+|---|---|
+| `pqfe-encrypt` | Passphrase file round-trip done right: runtime passphrase (PQFE101), Argon2id, atomic output, fail-closed catch (PQFE104). |
+| `pqfe-decrypt-untrusted` | Decryptor with `PqDecryptionLimits.Untrusted` — the mandatory shape for uploads and shared storage. |
+| `pqfe-hybrid-keygen` | X25519 + ML-KEM-768 key pair with the private half stored as a passphrase-protected PQKF key file (PQFE102). |
+| `pqfe-hybrid-roundtrip` | Encrypt to a recipient public key; decrypt after `ImportEncrypted` of the protected key file. |
+| `pqfe-sign-verify` | Detached Ed25519 + ML-DSA-65 signing with verify-before-use and no swallowed `PqSignatureException`. |
+| `pqfe-di` | One-line DI registration, including the limits overload for services decrypting untrusted containers. |
+| `pqfe-upload` | ASP.NET Core streaming upload encryption — the web server holds only the public key and can read nothing it stores. |
+| `pqfe-kms` | AWS KMS / Azure Key Vault envelope encryption — the master key never enters your process. |
+
 ## Why These Snippets First?
 
 - **Envelope snippets are the safest default.** They collapse KEM + HKDF + AEAD into one misuse-resistant API.
@@ -47,10 +65,18 @@ Recommended starting points:
 The snippets emit code that depends on the NuGet packages — install them in your project or they will not compile:
 
 ```bash
+# For the pqh-* snippets:
 dotnet add package PostQuantum.Hybrid
 dotnet add package PostQuantum.Hybrid.Analyzers      # strongly recommended
 dotnet add package PostQuantum.Hybrid.Envelopes      # for Seal/Open helpers
 dotnet add package PostQuantum.Hybrid.AspNetCore     # for the ASP.NET Core wiring
+
+# For the pqfe-* snippets:
+dotnet add package PostQuantum.FileEncryption
+dotnet add package PostQuantum.FileEncryption.Analyzers   # strongly recommended
+dotnet add package PostQuantum.FileEncryption.Hybrid      # recipient encryption
+dotnet add package PostQuantum.FileEncryption.Signing     # detached signatures
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection
 ```
 
 ## Known Issues
@@ -60,6 +86,13 @@ See the main repository's [KNOWN-GAPS.md](https://github.com/systemslibrarian/Po
 ## Release Notes
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed release notes.
+
+### 1.2.0
+- Added the `pqfe-*` snippet family for the PostQuantum.FileEncryption NuGet family:
+  fail-closed file encryption, untrusted-input limits, PQKF key files, detached
+  signing, DI registration, streaming upload encryption, and KMS envelopes.
+- Every `pqfe-*` snippet is analyzer-clean against `PostQuantum.FileEncryption.Analyzers`
+  (PQFE101 – PQFE104) and mirrors that repo's cookbook recipes.
 
 ### 1.1.0
 - Added `Envelopes`, ASP.NET Core configuration/rotation, and readiness-check snippets.

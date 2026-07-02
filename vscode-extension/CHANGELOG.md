@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+- The `pqfe-*` snippet family for the
+  [PostQuantum.FileEncryption](https://github.com/systemslibrarian/postquantum-file-encryption)
+  NuGet family: `pqfe-encrypt`, `pqfe-decrypt-untrusted`, `pqfe-hybrid-keygen`,
+  `pqfe-hybrid-roundtrip`, `pqfe-sign-verify`, `pqfe-di`, `pqfe-upload`, `pqfe-kms`.
+- Every `pqfe-*` snippet is analyzer-clean against
+  `PostQuantum.FileEncryption.Analyzers` (PQFE101 – PQFE104): runtime passphrases,
+  passphrase-protected PQKF key files instead of raw exports, awaited operations, and
+  no swallowed fail-closed exceptions — each body mirrors a recipe in that repo's
+  COOKBOOK.md.
+
+### Changed
+- Marketplace listing description and keywords now cover both library families.
+
 ## 1.1.0
 
 ### Added

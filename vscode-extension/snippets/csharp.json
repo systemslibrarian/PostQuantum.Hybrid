@@ -338,5 +338,173 @@
       "}",
       "$0"
     ]
+  },
+
+  "FileEncryption: passphrase file round-trip": {
+    "prefix": "pqfe-encrypt",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption: encrypt/decrypt a file with a runtime passphrase (never a literal — PQFE101), Argon2id KDF, atomic output, fail-closed error handling. See docs/COOKBOOK.md recipe 1.",
+    "body": [
+      "using PostQuantum.FileEncryption;",
+      "",
+      "// The passphrase enters at runtime — a literal here ships with every binary (PQFE101).",
+      "string ${1:passphrase} = ${2:Environment.GetEnvironmentVariable(\"PQFE_PASS\") ?? throw new InvalidOperationException(\"set PQFE_PASS\")};",
+      "",
+      "await new PqFileEncryptor(PqEncryptionOptions.Argon2id)",
+      "    .EncryptFileAsync(${3:inputPath}, ${4:outputPath}, ${1:passphrase}, cancellationToken: ${5:cancellationToken});",
+      "",
+      "try",
+      "{",
+      "    await new PqFileDecryptor()",
+      "        .DecryptFileAsync(${4:outputPath}, ${6:restoredPath}, ${1:passphrase}, cancellationToken: ${5:cancellationToken});",
+      "}",
+      "catch (PqDecryptionException)",
+      "{",
+      "    // Wrong passphrase and tampered bytes are deliberately indistinguishable; no partial",
+      "    // plaintext was written. Handle it — an empty catch is flagged (PQFE104).",
+      "    ${7:throw;}",
+      "}",
+      "$0"
+    ]
+  },
+
+  "FileEncryption: decrypt untrusted input with limits": {
+    "prefix": "pqfe-decrypt-untrusted",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption: decryptor with resource ceilings for containers from uploads/shared storage — a hostile header can otherwise demand gibibytes of KDF memory before anything authenticates.",
+    "body": [
+      "using PostQuantum.FileEncryption;",
+      "",
+      "// A header above a limit is rejected with PqFormatException before any allocation or KDF work.",
+      "var ${1:decryptor} = new PqFileDecryptor(PqDecryptionLimits.Untrusted);",
+      "try",
+      "{",
+      "    await ${1:decryptor}.DecryptFileAsync(${2:untrustedPath}, ${3:outputPath}, ${4:passphrase}, cancellationToken: ${5:cancellationToken});",
+      "}",
+      "catch (PqFormatException)",
+      "{",
+      "    // Not a container, or it demands more resources than this service allows.",
+      "    ${6:throw;}",
+      "}",
+      "catch (PqDecryptionException)",
+      "{",
+      "    // Fail-closed: wrong key or altered bytes — log as a security event, never retry in a loop.",
+      "    ${7:throw;}",
+      "}",
+      "$0"
+    ]
+  },
+
+  "FileEncryption: hybrid recipient keygen + encrypted key file": {
+    "prefix": "pqfe-hybrid-keygen",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption.Hybrid: generate an X25519 + ML-KEM-768 key pair; store the private key as a passphrase-protected PQKF key file (raw Export() to disk is flagged — PQFE102).",
+    "body": [
+      "using PostQuantum.FileEncryption.Hybrid;",
+      "",
+      "using var ${1:keyPair} = PqHybridKeyPair.Generate();",
+      "await File.WriteAllBytesAsync(${2:\"me.pub\"}, ${1:keyPair}.PublicKey.Export());          // public — share freely",
+      "await File.WriteAllBytesAsync(${3:\"me.key\"}, ${1:keyPair}.PrivateKey.ExportEncrypted(${4:passphrase})); // PQKF: authenticated, Argon2id-hardened",
+      "$0"
+    ]
+  },
+
+  "FileEncryption: encrypt to a recipient / decrypt with key file": {
+    "prefix": "pqfe-hybrid-roundtrip",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption.Hybrid: sender encrypts to the public key; recipient loads the passphrase-protected key file (fails closed on wrong passphrase or tampering) and decrypts.",
+    "body": [
+      "using PostQuantum.FileEncryption;",
+      "using PostQuantum.FileEncryption.Hybrid;",
+      "",
+      "// Sender — needs only the recipient's public key.",
+      "var ${1:recipient} = PqHybridPublicKey.Import(await File.ReadAllBytesAsync(${2:\"me.pub\"}));",
+      "await new PqHybridEncryptor().EncryptFileAsync(${3:inputPath}, ${4:containerPath}, ${1:recipient});",
+      "",
+      "// Recipient — ImportEncrypted takes optional PqDecryptionLimits for untrusted key files.",
+      "using var ${5:privateKey} = PqHybridPrivateKey.ImportEncrypted(",
+      "    await File.ReadAllBytesAsync(${6:\"me.key\"}), ${7:passphrase});",
+      "await new PqHybridDecryptor().DecryptFileAsync(${4:containerPath}, ${8:restoredPath}, ${5:privateKey});",
+      "$0"
+    ]
+  },
+
+  "FileEncryption: detached sign + verify": {
+    "prefix": "pqfe-sign-verify",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption.Signing: detached Ed25519 + ML-DSA-65 signature — verify BEFORE using the file, and never swallow PqSignatureException (PQFE104).",
+    "body": [
+      "using PostQuantum.FileEncryption.Signing;",
+      "",
+      "await new PqSigner().SignFileAsync(${1:filePath}, ${1:filePath} + \".sig\", ${2:signingPrivateKey});",
+      "",
+      "// Verifier — the public key must arrive over a channel you trust (strip-and-resign!).",
+      "try",
+      "{",
+      "    await new PqVerifier().VerifyFileAsync(${1:filePath}, ${1:filePath} + \".sig\", ${3:trustedPublicKey});",
+      "}",
+      "catch (PqSignatureException)",
+      "{",
+      "    // Forged, altered, or a different key — the file is untrusted. Do not use it.",
+      "    ${4:throw;}",
+      "}",
+      "$0"
+    ]
+  },
+
+  "FileEncryption: DI registration (with untrusted-input limits)": {
+    "prefix": "pqfe-di",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption.Extensions.DependencyInjection: one-line registration; the limits overload is the right default for hosts that decrypt containers they did not produce.",
+    "body": [
+      "using PostQuantum.FileEncryption;",
+      "",
+      "${1:builder}.Services.AddPqFileEncryption(PqEncryptionOptions.Argon2id, PqDecryptionLimits.Untrusted);",
+      "${1:builder}.Services.AddPqHybridFileEncryption(null, PqDecryptionLimits.Untrusted); // + recipient encryption",
+      "${1:builder}.Services.AddPqSigning();                                                // + detached signatures",
+      "$0"
+    ]
+  },
+
+  "FileEncryption: ASP.NET Core streaming upload encryption": {
+    "prefix": "pqfe-upload",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption.Hybrid: encrypt uploads as they stream in, to a recipient public key — the web server holds no decryption capability, and plaintext never lands on its disk.",
+    "body": [
+      "using PostQuantum.FileEncryption.Hybrid;",
+      "",
+      "${1:app}.MapPost(\"/upload\", async (HttpRequest request, CancellationToken cancellationToken) =>",
+      "{",
+      "    IFormFileCollection files = (await request.ReadFormAsync(cancellationToken)).Files;",
+      "    if (files.Count == 0)",
+      "    {",
+      "        return Results.BadRequest();",
+      "    }",
+      "",
+      "    string storagePath = Path.Combine(${2:storageRoot}, \\$\"{Guid.NewGuid():N}.pqfe\");",
+      "    await using Stream upload = files[0].OpenReadStream();",
+      "    await using var output = File.Create(storagePath);",
+      "    await new PqHybridEncryptor().EncryptToAsync(",
+      "        upload, output, [${3:recipientPublicKey}], files[0].Length, null, cancellationToken);",
+      "    return Results.Ok();",
+      "});",
+      "$0"
+    ]
+  },
+
+  "FileEncryption: KMS envelope encryption (AWS / Azure)": {
+    "prefix": "pqfe-kms",
+    "scope": "csharp",
+    "description": "PostQuantum.FileEncryption.Aws / .AzureKeyVault: the master key never enters your process; each file gets a fresh content key wrapped by the KMS. Rotation re-wraps 32 bytes, not the data.",
+    "body": [
+      "using PostQuantum.FileEncryption;",
+      "",
+      "// AWS:   using var provider = new AwsKmsContentKeyProvider(${1:kmsClient}, ${2:keyId});",
+      "// Azure: using var provider = new AzureKeyVaultContentKeyProvider(${3:cryptographyClient});",
+      "",
+      "await new PqFileEncryptor().EncryptFileAsync(${4:inputPath}, ${5:containerPath}, ${6:provider});",
+      "await new PqFileDecryptor().DecryptFileAsync(${5:containerPath}, ${7:restoredPath}, ${6:provider});",
+      "$0"
+    ]
   }
 }

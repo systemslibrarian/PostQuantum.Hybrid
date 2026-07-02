@@ -1,8 +1,8 @@
 {
   "name": "postquantum-hybrid-snippets",
   "displayName": "PostQuantum.Hybrid Snippets",
-  "description": "Analyzer-clean C# snippets for PostQuantum.Hybrid, Envelopes, and AspNetCore secure patterns.",
-  "version": "1.1.0",
+  "description": "Analyzer-clean C# snippets for PostQuantum.Hybrid (Envelopes, AspNetCore) and the PostQuantum.FileEncryption family (fail-closed file encryption, key files, signing, DI).",
+  "version": "1.2.0",
   "publisher": "systemslibrarian",
   "license": "MIT",
   "icon": "vsc-icon.png",
@@ -28,6 +28,9 @@
     "ml-dsa",
     "aspnetcore",
     "envelopes",
+    "file-encryption",
+    "aes-gcm",
+    "argon2id",
     "security",
     "snippets"
   ],
