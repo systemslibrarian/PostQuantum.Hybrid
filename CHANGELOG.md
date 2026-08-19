@@ -5,6 +5,25 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-08-19
+
+Dependency maintenance. No public API change and no behavioural change.
+
+### Changed
+
+- **`Microsoft.Extensions.Configuration.Abstractions` 8.0.0 → 10.0.9** and
+  **`Microsoft.Extensions.Configuration.Binder` 8.0.2 → 10.0.9** in
+  `PostQuantum.Hybrid.AspNetCore`. Minor rather than patch because these raise the published
+  dependency floor across a major version: a consumer resolving `PostQuantum.Hybrid.AspNetCore`
+  will now pull the 10.0.x line of those packages. Both still ship `lib/net8.0` with net8.0 and
+  net9.0 dependency groups, so the `net8.0;net10.0` plus `netstandard2.0` target set is unchanged
+  and no consumer is forced across a major boundary.
+- **`Microsoft.AspNetCore.DataProtection.Abstractions` 10.0.8 → 10.0.10** in
+  `PostQuantum.Hybrid.AspNetCore`.
+- Test and CI toolchain updated — `Microsoft.NET.Test.Sdk` 18.9.0, `xunit` 2.9.3,
+  `xunit.runner.visualstudio` 4.0.0, `Microsoft.CodeAnalysis.PublicApiAnalyzers` 5.6.0, and the
+  GitHub Actions used by CI. None of these reach a published package.
+
 ## [1.1.1] — 2026-06-10
 
 ### Fixed — `HybridSharedSecret.Clear()` now matches its own contract
