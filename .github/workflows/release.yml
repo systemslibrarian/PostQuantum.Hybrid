@@ -68,7 +68,7 @@ jobs:
       # THIS repo's release workflow from THIS tag —
       #   gh attestation verify <file>.nupkg --owner systemslibrarian
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*.nupkg
 
