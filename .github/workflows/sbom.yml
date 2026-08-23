@@ -36,7 +36,7 @@ jobs:
         run: dotnet CycloneDX src/PostQuantum.Hybrid.Envelopes/PostQuantum.Hybrid.Envelopes.csproj -o sbom -f sbom-postquantum-hybrid-envelopes.json --json
 
       - name: Generate SBOM for PostQuantum.Hybrid.Analyzers
-        run: dotnet CycloneDX src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj -o sbom -f sbom-postquantum-hybrid-analyzers.json --json
+        run: dotnet CycloneDX src/PostQuantum.Hybrid.CodeFixes/PostQuantum.Hybrid.CodeFixes.csproj -o sbom -f sbom-postquantum-hybrid-analyzers.json --json
 
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v7

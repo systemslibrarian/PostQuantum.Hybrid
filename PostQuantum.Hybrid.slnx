@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj" />
     <Project Path="src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj" />
+    <Project Path="src/PostQuantum.Hybrid.CodeFixes/PostQuantum.Hybrid.CodeFixes.csproj" />
     <Project Path="src/PostQuantum.Hybrid.AspNetCore/PostQuantum.Hybrid.AspNetCore.csproj" />
     <Project Path="src/PostQuantum.Hybrid.Envelopes/PostQuantum.Hybrid.Envelopes.csproj" />
     <Project Path="src/PostQuantum.Hybrid.TestingSupport/PostQuantum.Hybrid.TestingSupport.csproj" />

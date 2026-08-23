@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PostQuantum.Hybrid.Analyzers\PostQuantum.Hybrid.Analyzers.csproj" />
+    <ProjectReference Include="..\..\src\PostQuantum.Hybrid.CodeFixes\PostQuantum.Hybrid.CodeFixes.csproj" />
     <ProjectReference Include="..\..\src\PostQuantum.Hybrid\PostQuantum.Hybrid.csproj" />
   </ItemGroup>
 

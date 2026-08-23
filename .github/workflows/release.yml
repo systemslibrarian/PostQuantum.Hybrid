@@ -53,7 +53,7 @@ jobs:
             src/PostQuantum.Hybrid/PostQuantum.Hybrid.csproj \
             src/PostQuantum.Hybrid.Envelopes/PostQuantum.Hybrid.Envelopes.csproj \
             src/PostQuantum.Hybrid.AspNetCore/PostQuantum.Hybrid.AspNetCore.csproj \
-            src/PostQuantum.Hybrid.Analyzers/PostQuantum.Hybrid.Analyzers.csproj \
+            src/PostQuantum.Hybrid.CodeFixes/PostQuantum.Hybrid.CodeFixes.csproj \
             src/PostQuantum.Hybrid.TestingSupport/PostQuantum.Hybrid.TestingSupport.csproj \
             templates/PostQuantum.Hybrid.Templates.csproj
           do

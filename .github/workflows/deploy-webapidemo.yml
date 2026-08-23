@@ -23,6 +23,7 @@ on:
       - "src/PostQuantum.Hybrid/**"
       - "src/PostQuantum.Hybrid.AspNetCore/**"
       - "src/PostQuantum.Hybrid.Analyzers/**"
+      - "src/PostQuantum.Hybrid.CodeFixes/**"
       - "Directory.Build.props"
       - "Directory.Build.targets"
       - "global.json"
