@@ -32,6 +32,14 @@ namespace PostQuantum.Hybrid.Tests;
 /// </remarks>
 public class NistKatTests
 {
+    // ML-KEM private-key pins were re-derived for BouncyCastle 2.7.0, which
+    // changed what Format.SeedAndEncoding emits: 2.6.x wrote the seed form
+    // (seed || ek || H(ek) || z, 1312 bytes) and 2.7.0 writes the FIPS 203
+    // decapsulation key (2400 bytes) that the native .NET backend has always
+    // produced. This is a serialization change, NOT a derivation change --
+    // every PUBLIC key pin below is byte-identical across the bump, which is
+    // the evidence that the key pairs themselves did not move. MlKemBackend
+    // reads both encodings so keys written by an earlier release still open.
     public static IEnumerable<object[]> MlKemSeeds() => new[]
     {
         new object[]
@@ -43,7 +51,7 @@ public class NistKatTests
                 "2021222324252627" + "28292a2b2c2d2e2f" +
                 "3031323334353637" + "38393a3b3c3d3e3f"),
             "0b7934c83125c788995e2ba6bd761e33046b3e40571be53e023309a29f398cc9",
-            "0c2ae860c2b0989975355462da320c8c0f08ce379fc25db9dcf4e5a1a5158115",
+            "dac268bde6a8dd238e9887117d6b664e7a7a9350ad6b7c08a948e504809572a5",
         },
         new object[]
         {
@@ -54,7 +62,7 @@ public class NistKatTests
                 "a5a5a5a5a5a5a5a5" + "5a5a5a5a5a5a5a5a" +
                 "a5a5a5a5a5a5a5a5" + "5a5a5a5a5a5a5a5a"),
             "e23aa5667835064641886f7e519e656371edcbe231559a93d9c43c2e0b043fcf",
-            "466d398128c5904fe4c013a62473cd651dee7675553361ef16ac47e867832312",
+            "10343cd8c83b8c905eb09b41aafeaee8770c11650ddfb653b669009982b6b5dc",
         },
         new object[]
         {
@@ -65,7 +73,7 @@ public class NistKatTests
                 "ffffffffffffffff" + "ffffffffffffffff" +
                 "ffffffffffffffff" + "ffffffffffffffff"),
             "b212c1e61145cc7f4fb3ff1e6adf823f66a69e0fca3cd7d571ab259a96348509",
-            "e62f8736139c2f15fef4d7da65f5f3b3d8ff56d2e0f528bcef68df1c2b16fcc8",
+            "a958f21bfaf882fdeada66f18774b8dc10ff7e3f7fcacc8e295b2dc138d23998",
         },
     };
 

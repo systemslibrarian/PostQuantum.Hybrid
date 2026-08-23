@@ -138,7 +138,12 @@ internal static class MlKemBackend
 #if NET10_0_OR_GREATER
         if (UseNative)
         {
-            using var kem = MLKem.ImportDecapsulationKey(MLKemAlgorithm.MLKem768, privateKey);
+            // A blob written by an earlier release is the seed form, which the
+            // native importer does not accept; the seed in its first 64 bytes
+            // reproduces the same key.
+            using var kem = privateKey.Length == LegacySeedFormPrivateKeyLength
+                ? MLKem.ImportPrivateSeed(MLKemAlgorithm.MLKem768, privateKey[..SeedLength])
+                : MLKem.ImportDecapsulationKey(MLKemAlgorithm.MLKem768, privateKey);
             kem.Decapsulate(ciphertext, sharedSecret);
             return;
         }
@@ -146,7 +151,7 @@ internal static class MlKemBackend
         var privBuf = privateKey.ToArray();
         try
         {
-            var priv = MLKemPrivateKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, privBuf);
+            var priv = LoadPrivateKey(privBuf);
             var dec = new MLKemDecapsulator(MLKemParameters.ml_kem_768);
             dec.Init(priv);
             dec.Decapsulate(ciphertext, sharedSecret);
@@ -155,5 +160,46 @@ internal static class MlKemBackend
         {
             System.Security.Cryptography.CryptographicOperations.ZeroMemory(privBuf);
         }
+    }
+
+    /// <summary>
+    /// Length of the private-key blob this library wrote via BouncyCastle
+    /// 2.6.x: <c>seed(64) || ek(1184) || H(ek)(32) || z(32)</c>. BouncyCastle
+    /// 2.7.0 changed <c>Format.SeedAndEncoding</c> to emit the FIPS 203
+    /// decapsulation key instead, which is <see cref="StandardPrivateKeyLength"/>
+    /// bytes and is what the native .NET backend has always produced — so the
+    /// upgrade is what finally makes the two backends agree, as this class has
+    /// always claimed they do. Keys persisted by an earlier release still have
+    /// to open, hence <see cref="LoadPrivateKey"/>.
+    /// </summary>
+    private const int LegacySeedFormPrivateKeyLength = 1312;
+
+    /// <summary>FIPS 203 ML-KEM-768 decapsulation key length.</summary>
+    private const int StandardPrivateKeyLength = 2400;
+
+    private const int SeedLength = 64;
+
+    /// <summary>
+    /// Accepts either encoding. The legacy blob carries the seed in its first
+    /// 64 bytes, and deriving from that seed reproduces the identical key pair
+    /// — verified against the pinned public-key hashes in
+    /// <c>NistKatTests</c>, which did not move across the BouncyCastle bump.
+    /// </summary>
+    private static MLKemPrivateKeyParameters LoadPrivateKey(byte[] privBuf)
+    {
+        if (privBuf.Length == LegacySeedFormPrivateKeyLength)
+        {
+            var seed = privBuf[..SeedLength];
+            try
+            {
+                return MLKemPrivateKeyParameters.FromSeed(MLKemParameters.ml_kem_768, seed);
+            }
+            finally
+            {
+                System.Security.Cryptography.CryptographicOperations.ZeroMemory(seed);
+            }
+        }
+
+        return MLKemPrivateKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, privBuf);
     }
 }
